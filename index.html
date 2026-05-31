@@ -1,0 +1,1759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rocwell ACQ Dashboard</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg:#0f1117; --surface:#181c27; --surface2:#1e2334; --border:#2a3148;
+  --text:#e4e8f0; --text-muted:#7b87a0; --accent:#4f7cff; --accent-h:#6b93ff;
+  --radius:10px; --shadow:0 4px 24px rgba(0,0,0,.4);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;}
+button{cursor:pointer;font-family:inherit;font-size:13px;}
+input,select,textarea{font-family:inherit;font-size:13px;}
+a{color:var(--accent);text-decoration:none;}
+::-webkit-scrollbar{width:6px;height:6px;}
+::-webkit-scrollbar-track{background:var(--surface);}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+#view-loading{display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:16px;}
+.spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+#view-login{display:none;align-items:center;justify-content:center;height:100vh;}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:48px;text-align:center;max-width:420px;width:90%;box-shadow:var(--shadow);}
+.btn-google{display:flex;align-items:center;justify-content:center;gap:10px;background:#fff;color:#333;border:none;border-radius:8px;padding:12px 24px;font-weight:600;font-size:15px;width:100%;transition:opacity .2s;}
+.btn-google:hover{opacity:.9;}
+.btn-google svg{width:20px;height:20px;flex-shrink:0;}
+
+#view-public,#view-admin{display:none;flex-direction:column;min-height:100vh;}
+.topbar{display:flex;align-items:center;gap:12px;background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:56px;flex-shrink:0;}
+.topbar-logo-img{height:28px;display:block;}
+.topbar-tag{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:3px 8px;border-radius:4px;}
+.tag-public{background:rgba(79,124,255,.18);color:var(--accent);}
+.tag-admin{background:rgba(139,92,246,.18);color:#a78bfa;}
+.topbar-spacer{flex:1;}
+.topbar-actions{display:flex;gap:8px;align-items:center;}
+
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:7px;border:none;font-weight:600;transition:opacity .15s,background .15s;}
+.btn:hover{opacity:.85;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
+.btn-danger{background:#dc2626;color:#fff;}
+.btn-ghost{background:transparent;color:var(--text-muted);border:1px solid var(--border);}
+.btn-ghost:hover{color:var(--text);background:var(--surface2);}
+.btn-sm{padding:4px 10px;font-size:12px;border-radius:5px;}
+
+.view-pills{display:flex;background:var(--bg);border-radius:8px;border:1px solid var(--border);padding:3px;gap:2px;flex-wrap:wrap;}
+.view-pill{padding:5px 13px;border-radius:6px;border:none;background:transparent;color:var(--text-muted);font-weight:600;transition:all .15s;}
+.view-pill.active{background:var(--surface2);color:var(--text);}
+.content{flex:1;overflow:auto;padding:20px;}
+
+.public-tabs{display:flex;gap:4px;margin-bottom:18px;border-bottom:1px solid var(--border);}
+.public-tab-btn{padding:8px 18px;border:none;background:transparent;color:var(--text-muted);font-weight:600;font-size:14px;border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer;transition:color .15s,border-color .15s;}
+.public-tab-btn:hover{color:var(--text);}
+.public-tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+.public-tab-count{display:inline-flex;align-items:center;justify-content:center;background:var(--surface2);border:1px solid var(--border);border-radius:10px;font-size:11px;font-weight:700;padding:1px 7px;margin-left:6px;color:var(--text-muted);}
+.public-tab-btn.active .public-tab-count{background:rgba(79,124,255,.15);color:var(--accent);border-color:rgba(79,124,255,.3);}
+
+.public-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:10px;}
+.public-header h2{font-size:20px;font-weight:700;}
+.public-header p{color:var(--text-muted);font-size:13px;}
+.table-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border);}
+table.data-table{width:100%;border-collapse:collapse;background:var(--surface);}
+table.data-table thead{background:var(--surface2);}
+table.data-table th{padding:10px 14px;text-align:left;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);border-bottom:1px solid var(--border);white-space:nowrap;user-select:none;cursor:pointer;}
+table.data-table th:hover{color:var(--text);}
+table.data-table td{padding:11px 14px;border-bottom:1px solid var(--border);vertical-align:middle;}
+table.data-table tr:last-child td{border-bottom:none;}
+table.data-table tbody tr{transition:background .12s;}
+table.data-table tbody tr:hover{background:var(--surface2);}
+
+.stage-badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;}
+.stage-possible{background:rgba(59,130,246,.18);color:#60a5fa;}
+.stage-draft_offer{background:rgba(139,92,246,.18);color:#a78bfa;}
+.stage-offer_outstanding{background:rgba(249,115,22,.18);color:#fb923c;}
+.stage-due_diligence{background:rgba(234,179,8,.18);color:#fbbf24;}
+.stage-permitting{background:rgba(20,184,166,.18);color:#2dd4bf;}
+.stage-closing{background:rgba(34,197,94,.18);color:#4ade80;}
+.stage-closed{background:rgba(16,185,129,.18);color:#34d399;}
+.stage-dead{background:rgba(107,114,128,.18);color:#9ca3af;}
+
+.fb-chip{font-size:11px;font-weight:700;padding:3px 9px;border-radius:10px;white-space:nowrap;}
+.fb-immediately{background:rgba(34,197,94,.15);color:#4ade80;}
+.fb-potential{background:rgba(59,130,246,.15);color:#60a5fa;}
+.fb-pass-chip{background:rgba(239,68,68,.15);color:#f87171;}
+.fb-more-info{background:rgba(245,158,11,.15);color:#fbbf24;}
+
+.fb-summary-select{background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:5px 10px;color:var(--text);outline:none;font-size:12px;font-weight:600;cursor:pointer;min-width:160px;transition:border-color .15s;}
+.fb-summary-select:focus{border-color:var(--accent);}
+.fb-summary-select.val-immediately_pursue{border-color:rgba(34,197,94,.4);color:#4ade80;}
+.fb-summary-select.val-potential_pursue{border-color:rgba(59,130,246,.4);color:#60a5fa;}
+.fb-summary-select.val-pass{border-color:rgba(239,68,68,.4);color:#f87171;}
+.fb-summary-select.val-more_info{border-color:rgba(245,158,11,.4);color:#fbbf24;}
+
+.stalls-input{background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:5px 10px;color:var(--text);outline:none;font-size:13px;width:100px;transition:border-color .15s;}
+.stalls-input:focus{border-color:var(--accent);}
+.btn-restore{background:rgba(79,124,255,.15);color:var(--accent);border:1px solid rgba(79,124,255,.3);border-radius:5px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;}
+.btn-restore:hover{background:rgba(79,124,255,.3);}
+.empty-state{text-align:center;padding:48px 20px;color:var(--text-muted);}
+.empty-state .empty-icon{font-size:36px;margin-bottom:10px;}
+.empty-state h3{font-size:16px;color:var(--text);margin-bottom:6px;}
+
+#kanban-board{display:flex;gap:14px;align-items:flex-start;overflow-x:auto;padding-bottom:8px;min-height:500px;}
+.kanban-col{flex:0 0 262px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);display:flex;flex-direction:column;max-height:calc(100vh - 160px);}
+.kanban-col-header{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.kanban-col-title{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;}
+.stage-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.kanban-col-count{font-size:12px;font-weight:600;background:var(--bg);padding:2px 8px;border-radius:10px;color:var(--text-muted);}
+.kanban-cards{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:80px;}
+.kanban-cards.drag-over{background:rgba(79,124,255,.06);border-radius:6px;}
+
+.prop-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;cursor:grab;transition:box-shadow .15s;position:relative;}
+.prop-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.4);}
+.prop-card.dragging{opacity:.5;cursor:grabbing;}
+.prop-card-address{font-weight:700;font-size:13px;margin-bottom:3px;padding-right:22px;}
+.prop-card-meta{font-size:11px;color:var(--text-muted);margin-bottom:5px;}
+.prop-card .card-menu-btn{position:absolute;top:8px;right:8px;background:none;border:none;color:var(--text-muted);padding:2px 6px;border-radius:4px;opacity:0;transition:opacity .15s;}
+.prop-card:hover .card-menu-btn{opacity:1;}
+.card-info-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:5px;font-size:11px;color:var(--text-muted);}
+.ci-val{color:var(--text);font-weight:600;}
+.nnn-chip{background:rgba(79,124,255,.12);color:var(--accent);font-size:11px;font-weight:700;padding:2px 7px;border-radius:5px;}
+.card-broker{font-size:11px;color:var(--text-muted);margin-top:4px;}
+.card-offer-terms{font-size:11px;color:#fb923c;margin-top:3px;}
+.card-dates{font-size:11px;color:#fbbf24;margin-top:3px;}
+.card-footer{display:flex;align-items:center;justify-content:space-between;margin-top:7px;font-size:11px;}
+
+.admin-table-controls{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+.search-box{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 12px;flex:1;max-width:320px;}
+.search-box input{background:none;border:none;outline:none;color:var(--text);width:100%;}
+.search-box input::placeholder{color:var(--text-muted);}
+.stage-filter{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 12px;color:var(--text);outline:none;}
+td.editable{cursor:pointer;}
+td.editable:hover{background:rgba(79,124,255,.08);}
+td.editable input{background:var(--bg);border:1px solid var(--accent);border-radius:4px;padding:4px 7px;color:var(--text);width:100%;outline:none;}
+
+#tasks-panel{position:fixed;right:0;top:0;bottom:0;width:360px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;z-index:200;transform:translateX(100%);transition:transform .25s ease;box-shadow:-4px 0 24px rgba(0,0,0,.4);}
+#tasks-panel.open{transform:translateX(0);}
+.panel-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.panel-header h3{font-size:16px;font-weight:700;}
+.panel-close{background:none;border:none;color:var(--text-muted);font-size:20px;line-height:1;padding:4px;border-radius:4px;}
+.panel-close:hover{color:var(--text);background:var(--surface2);}
+.panel-body{flex:1;overflow-y:auto;padding:16px;}
+.task-item{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;}
+.task-item-header{display:flex;align-items:flex-start;gap:10px;margin-bottom:6px;}
+.task-check{width:16px;height:16px;border-radius:4px;border:2px solid var(--border);background:none;cursor:pointer;flex-shrink:0;margin-top:2px;appearance:none;-webkit-appearance:none;}
+.task-check:checked{background:var(--accent);border-color:var(--accent);}
+.task-title{font-weight:600;font-size:13px;flex:1;}
+.task-desc{font-size:12px;color:var(--text-muted);}
+.task-prop-tag{font-size:11px;background:var(--bg);border:1px solid var(--border);padding:2px 7px;border-radius:10px;color:var(--text-muted);margin-top:6px;display:inline-block;}
+.task-status{font-size:11px;font-weight:700;padding:2px 7px;border-radius:10px;}
+.task-pending{background:rgba(245,158,11,.15);color:#fbbf24;}
+.task-complete{background:rgba(34,197,94,.15);color:#4ade80;}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:500;padding:20px;}
+.modal-overlay.hidden{display:none;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:580px;box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;}
+.modal-sm{max-width:400px;}
+.modal-header{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.modal-header h3{font-size:16px;font-weight:700;}
+.modal-close{background:none;border:none;color:var(--text-muted);font-size:22px;line-height:1;padding:4px;border-radius:4px;}
+.modal-close:hover{color:var(--text);background:var(--surface2);}
+.modal-body{padding:22px;overflow-y:auto;max-height:72vh;}
+.modal-footer{padding:16px 22px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;}
+
+.form-group{margin-bottom:13px;}
+.form-label{display:block;font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px;}
+.form-control{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:9px 12px;color:var(--text);outline:none;transition:border-color .15s;}
+.form-control:focus{border-color:var(--accent);}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.form-select{appearance:none;}
+.modal-section{border-top:1px solid var(--border);padding-top:14px;margin-top:6px;}
+.modal-section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);margin-bottom:12px;}
+
+.doc-drop-zone{border:2px dashed var(--border);border-radius:10px;padding:16px;text-align:center;color:var(--text-muted);cursor:pointer;transition:all .2s;margin-bottom:16px;font-size:13px;}
+.doc-drop-zone.drag-over{border-color:var(--accent);background:rgba(79,124,255,.06);color:var(--text);}
+.doc-drop-zone.loading{border-color:#eab308;color:#eab308;}
+.doc-drop-zone.success{border-color:#22c55e;color:#4ade80;}
+.doc-drop-zone.error{border-color:#ef4444;color:#f87171;}
+
+.settings-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:20px;}
+.settings-card-title{font-size:16px;font-weight:700;margin-bottom:6px;}
+.settings-card-desc{color:var(--text-muted);font-size:13px;margin-bottom:18px;}
+
+.chip-grace{background:rgba(249,115,22,.15);color:#fb923c;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;}
+.chip-archived{background:rgba(107,114,128,.15);color:#9ca3af;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;}
+
+.toast-container{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:9999;}
+.toast{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;min-width:280px;box-shadow:var(--shadow);display:flex;gap:10px;align-items:flex-start;animation:slideIn .3s ease;font-size:13px;}
+.toast.removing{animation:slideOut .3s ease forwards;}
+@keyframes slideIn{from{transform:translateX(120%);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes slideOut{from{transform:translateX(0);opacity:1}to{transform:translateX(120%);opacity:0}}
+.toast-icon{font-size:16px;flex-shrink:0;}
+.toast-title{font-weight:700;margin-bottom:2px;}
+.toast-body{color:var(--text-muted);font-size:12px;}
+.notif-badge{background:#ef4444;color:#fff;font-size:10px;font-weight:800;width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;}
+
+@media(max-width:640px){.kanban-col{flex:0 0 220px;}#tasks-panel{width:100%;}.form-row{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<div id="view-loading">
+  <div class="spinner"></div>
+  <span style="color:var(--text-muted)">Loading…</span>
+</div>
+
+<div id="view-login">
+  <div class="login-card">
+    <img src="https://images.squarespace-cdn.com/content/v1/67ab7dbef826931ef791beb1/54d824d2-5477-4587-9d07-c4a3bbce8359/rockwell+white+logo.png" alt="Rocwell" style="height:40px;margin:0 auto 16px;display:block;">
+    <p style="color:var(--text-muted);margin-bottom:32px;">Sign in to access the admin dashboard</p>
+    <button class="btn-google" id="btn-google-signin">
+      <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.2l6.8-6.8C35.8 2.3 30.3 0 24 0 14.6 0 6.7 5.4 2.8 13.3l7.9 6.1C12.6 13.1 17.9 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.6 3-2.3 5.5-4.9 7.2l7.5 5.8c4.4-4 7.2-10 7.2-17z"/><path fill="#FBBC05" d="M10.7 28.6A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.6l-7.9-6.1A23.9 23.9 0 0 0 0 24c0 3.9.9 7.5 2.6 10.8l8.1-6.2z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.2 1.5-5 2.3-8.4 2.3-6.1 0-11.3-3.7-13.3-9l-8.1 6.2C6.7 42.6 14.6 48 24 48z"/></svg>
+      Sign in with Google
+    </button>
+  </div>
+</div>
+
+<!-- PUBLIC VIEW -->
+<div id="view-public" style="display:none;flex-direction:column;min-height:100vh;">
+  <nav class="topbar">
+    <img class="topbar-logo-img" src="https://images.squarespace-cdn.com/content/v1/67ab7dbef826931ef791beb1/54d824d2-5477-4587-9d07-c4a3bbce8359/rockwell+white+logo.png" alt="Rocwell">
+    <span class="topbar-tag tag-public">Public</span>
+    <div class="topbar-spacer"></div>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost btn-sm" id="pub-import-btn">⬆ Import CSV</button>
+      <button class="btn btn-ghost btn-sm" id="pub-export-btn">⬇ Export CSV</button>
+      <input type="file" id="pub-import-file" accept=".csv,.xlsx,.xls" style="display:none">
+      <button class="btn btn-secondary btn-sm" id="pub-admin-login-btn" style="border-color:rgba(139,92,246,.4);color:#a78bfa;">🔒 Admin Login</button>
+    </div>
+  </nav>
+  <div class="content">
+    <div class="public-header">
+      <div><h2>Site Prospects</h2><p>Review available properties and share your feedback.</p></div>
+    </div>
+    <div class="public-tabs">
+      <button class="public-tab-btn active" data-tab="active">Active Prospects <span class="public-tab-count" id="tab-count-active">0</span></button>
+      <button class="public-tab-btn" data-tab="passed">Passed on Sites <span class="public-tab-count" id="tab-count-passed">0</span></button>
+    </div>
+    <div id="tab-active">
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr>
+            <th>Address</th><th>City</th><th>Proposed NNN Rent</th><th>Acreage</th>
+            <th>Parking Stalls</th><th>Stage</th><th>Feedback Summary</th><th>Your Feedback (Stalls Needed)</th>
+          </tr></thead>
+          <tbody id="public-tbody">
+            <tr><td colspan="8"><div class="empty-state"><div class="empty-icon">🏗️</div><h3>No properties yet</h3><p>Properties will appear here once added by the team.</p></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div id="tab-passed" style="display:none;">
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr>
+            <th>Address</th><th>City</th><th>Proposed NNN Rent</th><th>Acreage</th>
+            <th>Parking Stalls</th><th>Stage</th><th>Stalls Needed</th><th>Action</th>
+          </tr></thead>
+          <tbody id="passed-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN VIEW -->
+<div id="view-admin" style="display:none;flex-direction:column;min-height:100vh;">
+  <nav class="topbar">
+    <img class="topbar-logo-img" src="https://images.squarespace-cdn.com/content/v1/67ab7dbef826931ef791beb1/54d824d2-5477-4587-9d07-c4a3bbce8359/rockwell+white+logo.png" alt="Rocwell">
+    <span class="topbar-tag tag-admin">Admin</span>
+    <div class="topbar-spacer"></div>
+    <div class="topbar-actions">
+      <div class="view-pills" id="admin-view-pills">
+        <button class="view-pill active" data-view="kanban">⠿ Kanban</button>
+        <button class="view-pill" data-view="spreadsheet">≡ Spreadsheet</button>
+        <button class="view-pill" data-view="frontend">👁 Frontend</button>
+        <button class="view-pill" data-view="deaddeals">☠ Dead Deals</button>
+        <button class="view-pill" data-view="settings">⚙ Settings</button>
+      </div>
+      <button class="btn btn-secondary btn-sm" id="admin-import-btn">⬆ Import</button>
+      <button class="btn btn-secondary btn-sm" id="admin-export-btn">⬇ Export</button>
+      <input type="file" id="admin-import-file" accept=".csv,.xlsx,.xls" style="display:none">
+      <button class="btn btn-primary btn-sm" id="btn-add-property">+ Add Property</button>
+      <button class="btn btn-ghost btn-sm" id="btn-tasks-panel" style="position:relative">
+        📋 Tasks <span class="notif-badge" id="tasks-badge" style="display:none">0</span>
+      </button>
+      <span id="admin-user-name" style="color:var(--text-muted);font-size:13px;"></span>
+      <button class="btn btn-ghost btn-sm" id="btn-signout">Sign Out</button>
+    </div>
+  </nav>
+
+  <div class="content" id="admin-kanban-content"><div id="kanban-board"></div></div>
+
+  <div class="content" id="admin-spreadsheet-content" style="display:none;">
+    <div class="admin-table-controls">
+      <div class="search-box">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="admin-search" placeholder="Search properties…">
+      </div>
+      <select class="stage-filter" id="admin-stage-filter">
+        <option value="">All Stages</option>
+        <option value="possible">Possible</option>
+        <option value="draft_offer">Draft Offer</option>
+        <option value="offer_outstanding">Offer Outstanding</option>
+        <option value="due_diligence">Due Diligence</option>
+        <option value="permitting">Permitting</option>
+        <option value="closing">Closing</option>
+        <option value="closed">Closed</option>
+        <option value="dead">Dead</option>
+      </select>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr>
+          <th>Address</th><th>City</th><th>State</th>
+          <th>Asking Price</th><th>Price/Stall</th><th>Proposed NNN</th><th>NNN/Stall</th>
+          <th>Acreage</th><th>Stalls</th><th>Zoning</th><th>Broker</th>
+          <th>Stage</th><th>Feedback</th><th>Notes</th><th>Actions</th>
+        </tr></thead>
+        <tbody id="admin-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="content" id="admin-frontend-content" style="display:none;">
+    <div class="public-header"><div><h2>Frontend Preview</h2><p>Exactly what the public sees.</p></div></div>
+    <div style="margin-bottom:16px;display:flex;gap:4px;border-bottom:1px solid var(--border);">
+      <button class="public-tab-btn active" data-preview-tab="active">Active Prospects <span class="public-tab-count" id="preview-count-active">0</span></button>
+      <button class="public-tab-btn" data-preview-tab="passed">Passed on Sites <span class="public-tab-count" id="preview-count-passed">0</span></button>
+    </div>
+    <div id="preview-tab-active">
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Address</th><th>City</th><th>Proposed NNN Rent</th><th>Acreage</th><th>Parking Stalls</th><th>Stage</th><th>Feedback Summary</th><th>Stalls Needed</th></tr></thead>
+          <tbody id="admin-pub-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div id="preview-tab-passed" style="display:none;">
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Address</th><th>City</th><th>Proposed NNN Rent</th><th>Acreage</th><th>Parking Stalls</th><th>Stage</th><th>Stalls Needed</th><th>Action</th></tr></thead>
+          <tbody id="admin-passed-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="content" id="admin-deaddeals-content" style="display:none;"><div id="dead-deals-container"></div></div>
+  <div class="content" id="admin-settings-content" style="display:none;"><div id="settings-container" style="max-width:700px;"></div></div>
+</div>
+
+<!-- Tasks Panel -->
+<div id="tasks-panel">
+  <div class="panel-header"><h3>📋 Automation Tasks</h3><button class="panel-close" id="panel-close-btn">×</button></div>
+  <div class="panel-body" id="tasks-list"></div>
+</div>
+
+<!-- Property Modal -->
+<div class="modal-overlay hidden" id="property-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="prop-modal-title">Add Property</h3>
+      <button class="modal-close" data-close="property-modal">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="prop-id">
+      <div id="doc-drop-zone" class="doc-drop-zone" style="display:none;">
+        🤖 Drop a PDF or image here — AI will auto-fill the fields below
+        <div style="font-size:11px;margin-top:3px;opacity:.7">Click to browse · Supports PDF, JPG, PNG</div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Street Address *</label><input type="text" id="prop-address" class="form-control" placeholder="123 Main St"></div>
+        <div class="form-group"><label class="form-label">City *</label><input type="text" id="prop-city" class="form-control" placeholder="Tampa"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">State</label><input type="text" id="prop-state" class="form-control" placeholder="FL" maxlength="2"></div>
+        <div class="form-group"><label class="form-label">Asking Price ($)</label><input type="number" id="prop-price" class="form-control" placeholder="2500000" min="0"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Acreage</label><input type="text" id="prop-size" class="form-control" placeholder="2.5"></div>
+        <div class="form-group"><label class="form-label">Parking Stalls</label><input type="number" id="prop-parking" class="form-control" placeholder="80" min="0"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Zoning</label><input type="text" id="prop-zoning" class="form-control" placeholder="C-2"></div>
+        <div class="form-group"><label class="form-label">Stage</label>
+          <select id="prop-stage" class="form-control form-select">
+            <option value="possible">Possible</option>
+            <option value="draft_offer">Draft Offer</option>
+            <option value="offer_outstanding">Offer Outstanding</option>
+            <option value="due_diligence">Due Diligence</option>
+            <option value="permitting">Permitting</option>
+            <option value="closing">Closing</option>
+            <option value="closed">Closed</option>
+            <option value="dead">Dead</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-section-label">Broker &amp; Deal Info</div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Listing Broker</label><input type="text" id="prop-broker" class="form-control" placeholder="John Smith"></div>
+          <div class="form-group"><label class="form-label">Broker Phone</label><input type="text" id="prop-broker-phone" class="form-control" placeholder="(813) 555-1234"></div>
+        </div>
+        <div class="form-group"><label class="form-label">Offered Terms</label><textarea id="prop-offered-terms" class="form-control" rows="2" placeholder="e.g. $2.5M, 30-day close, 60-day DD…"></textarea></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Due Diligence Date</label><input type="date" id="prop-dd-date" class="form-control"></div>
+          <div class="form-group"><label class="form-label">Closing Target Date</label><input type="date" id="prop-closing-date" class="form-control"></div>
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-section-label">PSA Fields</div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Seller Name</label><input type="text" id="prop-seller" class="form-control" placeholder="John &amp; Jane Doe"></div>
+          <div class="form-group"><label class="form-label">County</label><input type="text" id="prop-county" class="form-control" placeholder="Hillsborough"></div>
+        </div>
+        <div class="form-group"><label class="form-label">Legal Description</label><textarea id="prop-legal-desc" class="form-control" rows="2" placeholder="Lot X, Block Y, Subdivision…"></textarea></div>
+        <div class="form-row-3">
+          <div class="form-group"><label class="form-label">SEC</label><input type="text" id="prop-sec" class="form-control" placeholder="14"></div>
+          <div class="form-group"><label class="form-label">TWP</label><input type="text" id="prop-twp" class="form-control" placeholder="29S"></div>
+          <div class="form-group"><label class="form-label">RNG</label><input type="text" id="prop-rng" class="form-control" placeholder="18E"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Initial Deposit ($)</label><input type="number" id="prop-init-deposit" class="form-control" placeholder="50000" min="0"></div>
+          <div class="form-group"><label class="form-label">Deposit Days</label><input type="number" id="prop-deposit-days" class="form-control" placeholder="3" min="0"></div>
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-section-label">Notes</div>
+        <div class="form-group"><textarea id="prop-notes" class="form-control" rows="3" placeholder="Internal notes…"></textarea></div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+          <input type="checkbox" id="prop-public" checked>
+          <span class="form-label" style="margin:0">Visible on public frontend</span>
+        </label>
+      </div>
+
+      <!-- Pro Forma Analysis (shown when asking price is set) -->
+      <div id="prop-pf-analysis" style="display:none;margin-top:6px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-close="property-modal">Cancel</button>
+      <button class="btn btn-ghost btn-sm" id="btn-gen-psa" style="display:none;">📄 Generate PSA</button>
+      <button class="btn btn-primary" id="btn-save-property">Save Property</button>
+    </div>
+  </div>
+</div>
+
+<!-- Dead Prompt Modal -->
+<div class="modal-overlay hidden" id="dead-prompt-modal">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <h3>☠ Mark as Dead</h3>
+      <button class="modal-close" id="dead-cancel-x">×</button>
+    </div>
+    <div class="modal-body" style="max-height:none;">
+      <p style="color:var(--text-muted);margin-bottom:16px;">Record any pursuit costs lost on this deal (optional).</p>
+      <div class="form-group">
+        <label class="form-label">Lost Pursuit $ (optional)</label>
+        <input type="number" id="dead-pursuit-cost" class="form-control" placeholder="e.g. 25000" min="0">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="dead-skip">Skip</button>
+      <button class="btn btn-danger" id="dead-confirm">Confirm Dead</button>
+    </div>
+  </div>
+</div>
+
+<!-- Column Mapper Modal -->
+<div class="modal-overlay hidden" id="col-mapper-modal">
+  <div class="modal" style="max-width:700px;">
+    <div class="modal-header">
+      <h3>📊 Map Import Columns</h3>
+      <button class="modal-close" data-close="col-mapper-modal">×</button>
+    </div>
+    <div class="modal-body" id="col-mapper-body" style="max-height:65vh;overflow-y:auto;padding:20px;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-close="col-mapper-modal">Cancel</button>
+      <button class="btn btn-primary" id="btn-confirm-import">Import →</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+// ── FIREBASE CONFIG ──────────────────────────────────────────
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyBQgxDGSrWkuY7LFigNkHX8ugSrJdv_6Y0",
+  authDomain:        "rocwell-acq.firebaseapp.com",
+  projectId:         "rocwell-acq",
+  storageBucket:     "rocwell-acq.firebasestorage.app",
+  messagingSenderId: "637449297603",
+  appId:             "1:637449297603:web:63273a189bc31463628c76",
+  measurementId:     "G-SS5S9379X0"
+};
+
+// ── CONSTANTS ────────────────────────────────────────────────
+const STAGES = [
+  { id:'possible',          label:'Possible',          color:'#3B82F6' },
+  { id:'draft_offer',       label:'Draft Offer',       color:'#8B5CF6' },
+  { id:'offer_outstanding', label:'Offer Outstanding', color:'#F97316' },
+  { id:'due_diligence',     label:'Due Diligence',     color:'#EAB308' },
+  { id:'permitting',        label:'Permitting',        color:'#14B8A6' },
+  { id:'closing',           label:'Closing',           color:'#22C55E' },
+  { id:'closed',            label:'Closed',            color:'#10B981' },
+  { id:'dead',              label:'Dead',              color:'#6B7280' },
+];
+const STAGE_MAP = Object.fromEntries(STAGES.map(s=>[s.id,s]));
+
+const FB_SUMMARY_OPTIONS = [
+  { value:'',                  label:'— Select —',        chip:'' },
+  { value:'immediately_pursue',label:'Immediately Pursue', chip:'fb-immediately' },
+  { value:'potential_pursue',  label:'Potential Pursue',   chip:'fb-potential' },
+  { value:'pass',              label:'Pass',               chip:'fb-pass-chip' },
+  { value:'more_info',         label:'More Info Needed',   chip:'fb-more-info' },
+];
+const FB_MAP = Object.fromEntries(FB_SUMMARY_OPTIONS.map(o=>[o.value,o]));
+
+const AUTOMATIONS = {
+  'possible→draft_offer':           [{title:'Prepare Initial Offer',desc:'Draft initial offer letter'},{title:'Run Comps Analysis',desc:'Pull comparable sales'}],
+  'draft_offer→offer_outstanding':  [{title:'Submit Offer to Seller',desc:'Send formal offer package to listing agent'},{title:'Notify Investor Group',desc:'Send offer summary to investors'}],
+  'offer_outstanding→due_diligence':[{title:'Order Property Inspection',desc:'Schedule inspection'},{title:'Order Title Search',desc:'Engage title company'},{title:'Environmental Review',desc:'Phase 1 ESA check'}],
+  'due_diligence→permitting':       [{title:'Submit Permit Applications',desc:'File permits with municipality'},{title:'Engage Architect/Engineer',desc:'Retain design professionals'}],
+  'permitting→closing':             [{title:'Schedule Closing Date',desc:'Coordinate with all parties'},{title:'Final Walkthrough',desc:'Conduct final walkthrough'},{title:'Wire Transfer Setup',desc:'Arrange closing funds'}],
+  'closing→closed':                 [{title:'Record Deed',desc:'Confirm deed recorded with county'},{title:'Notify Accounting',desc:'Send closing package to accounting'}],
+  '→dead':                          [{title:'Archive Property File',desc:'Move documents to archive'},{title:'Send Pass Notification',desc:'Notify relevant parties'}],
+};
+
+const DD_STAGES = ['due_diligence','permitting','closing','closed'];
+
+// ── STATE ────────────────────────────────────────────────────
+let db, auth, currentUser = null;
+let allProperties = {}, allTasks = {};
+let adminView = 'kanban';
+let sortState = { col:null, dir:1 };
+let unsubProperties, unsubTasks;
+let publicActiveTab = 'active', previewTab = 'active';
+let pendingDeadMove = null;
+let proformaSettings = {
+  ltvPct:65, annualRate:7, amortYears:25, returnOnCostPct:8,
+  prefEquityPct:20, prefReturnPct:12,
+  pursuitCostDollar:10000, closingCostPct:3, closingFeeDollar:10000,
+  interestReserveMonths:6, dcrTarget:1.25, carryPeriodMonths:12,
+  refiRate:6.5, refiAmortYears:20, refiDcr:1.25, refiClosingCostPct:2
+};
+let anthropicApiKey = '';
+
+// ── INIT ─────────────────────────────────────────────────────
+(function init(){
+  try{ firebase.initializeApp(FIREBASE_CONFIG); }catch(e){}
+  db   = firebase.firestore();
+  auth = firebase.auth();
+  auth.onAuthStateChanged(user=>{
+    currentUser = user;
+    if(user) showAdminView(user); else showPublicView();
+  });
+})();
+
+// ── VIEW ROUTING ─────────────────────────────────────────────
+function hide(id){ document.getElementById(id).style.display='none'; }
+function show(id,flex=true){ document.getElementById(id).style.display=flex?'flex':'block'; }
+
+function showPublicView(){
+  hide('view-loading'); hide('view-login'); hide('view-admin'); show('view-public');
+  listenProperties(renderPublicTables);
+}
+async function showAdminView(user){
+  hide('view-loading'); hide('view-login'); hide('view-public'); show('view-admin');
+  document.getElementById('admin-user-name').textContent = user.displayName||user.email;
+  await loadSettings();
+  setAdminView('kanban');
+  listenProperties(()=>{ renderKanban(); renderAdminTable(); renderAdminPubTable(); });
+  listenTasks(renderTasksPanel);
+}
+function showLoginView(){
+  hide('view-loading'); hide('view-public'); hide('view-admin'); show('view-login');
+}
+
+// ── AUTH ─────────────────────────────────────────────────────
+function triggerGoogleSignIn(){
+  auth.signInWithPopup(new firebase.auth.GoogleAuthProvider())
+    .catch(err=>toast('❌','Sign-in failed',err.message));
+}
+document.getElementById('btn-google-signin').addEventListener('click',triggerGoogleSignIn);
+document.getElementById('pub-admin-login-btn').addEventListener('click',triggerGoogleSignIn);
+document.getElementById('btn-signout').addEventListener('click',()=>{
+  if(unsubProperties) unsubProperties();
+  if(unsubTasks) unsubTasks();
+  auth.signOut();
+});
+
+// ── FIRESTORE LISTENERS ──────────────────────────────────────
+function listenProperties(cb){
+  if(unsubProperties) unsubProperties();
+  unsubProperties = db.collection('properties').onSnapshot(snap=>{
+    allProperties = {};
+    snap.forEach(doc=>{ allProperties[doc.id]={id:doc.id,...doc.data()}; });
+    cb();
+  });
+}
+function listenTasks(cb){
+  if(unsubTasks) unsubTasks();
+  unsubTasks = db.collection('tasks').orderBy('createdAt','desc').onSnapshot(snap=>{
+    allTasks = {};
+    snap.forEach(doc=>{ allTasks[doc.id]={id:doc.id,...doc.data()}; });
+    cb();
+  });
+}
+
+// ── SETTINGS ─────────────────────────────────────────────────
+async function loadSettings(){
+  try{
+    const [pf,gen] = await Promise.all([
+      db.collection('settings').doc('proforma').get(),
+      db.collection('settings').doc('general').get()
+    ]);
+    if(pf.exists) proformaSettings = {...proformaSettings,...pf.data()};
+    if(gen.exists && gen.data().anthropicApiKey) anthropicApiKey = gen.data().anthropicApiKey;
+  }catch(e){ console.warn('Settings:',e); }
+}
+
+function renderSettingsView(){
+  const pf = proformaSettings;
+  document.getElementById('settings-container').innerHTML = `
+    <h2 style="font-size:20px;font-weight:700;margin-bottom:24px;">⚙ Settings</h2>
+
+    <!-- ACQUISITION PRO FORMA -->
+    <div class="settings-card">
+      <div class="settings-card-title">Acquisition Pro Forma</div>
+      <div class="settings-card-desc">Sets the Proposed NNN Rent and deal sizing based on acquisition price.</div>
+
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:10px;">Financing</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">LTV %</label><input type="number" class="form-control" id="pf-ltv" value="${pf.ltvPct}" min="0" max="100" step="0.5"></div>
+        <div class="form-group"><label class="form-label">Interest Rate %</label><input type="number" class="form-control" id="pf-rate" value="${pf.annualRate}" min="0" step="0.125"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Amortization (Years)</label><input type="number" class="form-control" id="pf-amort" value="${pf.amortYears}" min="5" max="40"></div>
+        <div class="form-group"><label class="form-label">DCR Target (Acq. Sizing)</label><input type="number" class="form-control" id="pf-dcr" value="${pf.dcrTarget}" min="1" step="0.05"></div>
+      </div>
+
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin:14px 0 10px;">Returns</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Return on Cost %</label><input type="number" class="form-control" id="pf-roc" value="${pf.returnOnCostPct}" min="0" step="0.25"></div>
+        <div class="form-group"><label class="form-label">Preferred Equity %</label><input type="number" class="form-control" id="pf-pref-eq" value="${pf.prefEquityPct}" min="0" max="100" step="1"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Preferred Return %</label><input type="number" class="form-control" id="pf-pref-ret" value="${pf.prefReturnPct}" min="0" step="0.5"></div>
+        <div class="form-group"></div>
+      </div>
+
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin:14px 0 10px;">Cost Basis</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Pursuit Cost ($)</label><input type="number" class="form-control" id="pf-pursuit-dollar" value="${pf.pursuitCostDollar}" min="0" step="1000"></div>
+        <div class="form-group"><label class="form-label">Closing Fee ($)</label><input type="number" class="form-control" id="pf-closing-fee" value="${pf.closingFeeDollar}" min="0" step="1000"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Soft Costs (% of Price)</label><input type="number" class="form-control" id="pf-closing-pct" value="${pf.closingCostPct}" min="0" step="0.25"></div>
+        <div class="form-group"></div>
+      </div>
+
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin:14px 0 10px;">Interest Reserve &amp; Carry</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Interest Reserve (Months)</label><input type="number" class="form-control" id="pf-ir-months" value="${pf.interestReserveMonths}" min="0" max="36"></div>
+        <div class="form-group"><label class="form-label">Carry Period Before Refi (Months)</label><input type="number" class="form-control" id="pf-carry-months" value="${pf.carryPeriodMonths}" min="1" max="120"></div>
+      </div>
+
+      <button class="btn btn-primary" id="btn-save-proforma">Save Pro Forma Settings</button>
+    </div>
+
+    <!-- REFI CALCULATOR -->
+    <div class="settings-card">
+      <div class="settings-card-title">Refi Calculator</div>
+      <div class="settings-card-desc">Cash-out refi after the carry period. Loan is sized to max out the DCR, then checked against pref equity payoff.</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Refi Interest Rate %</label><input type="number" class="form-control" id="pf-refi-rate" value="${pf.refiRate}" min="0" step="0.125"></div>
+        <div class="form-group"><label class="form-label">Refi Amortization (Years)</label><input type="number" class="form-control" id="pf-refi-amort" value="${pf.refiAmortYears}" min="5" max="40"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Refi DCR Target</label><input type="number" class="form-control" id="pf-refi-dcr" value="${pf.refiDcr}" min="1" step="0.05"></div>
+        <div class="form-group"><label class="form-label">Refi Closing Cost %</label><input type="number" class="form-control" id="pf-refi-closing" value="${pf.refiClosingCostPct}" min="0" step="0.25"></div>
+      </div>
+      <button class="btn btn-primary" id="btn-save-refi">Save Refi Settings</button>
+    </div>
+
+    <!-- AI KEY -->
+    <div class="settings-card">
+      <div class="settings-card-title">AI Document Reading</div>
+      <div class="settings-card-desc">Anthropic API key enables drag-and-drop document auto-fill on the property modal.</div>
+      <div class="form-group">
+        <label class="form-label">Anthropic API Key</label>
+        <input type="password" class="form-control" id="pf-api-key" value="${anthropicApiKey}" placeholder="sk-ant-…">
+      </div>
+      <button class="btn btn-primary" id="btn-save-api-key">Save API Key</button>
+    </div>`;
+
+  document.getElementById('btn-save-proforma').addEventListener('click', async ()=>{
+    const refiPart = {
+      refiRate:         parseFloat(document.getElementById('pf-refi-rate')?.value)    || 6.5,
+      refiAmortYears:   parseInt(document.getElementById('pf-refi-amort')?.value)     || 20,
+      refiDcr:          parseFloat(document.getElementById('pf-refi-dcr')?.value)     || 1.25,
+      refiClosingCostPct:parseFloat(document.getElementById('pf-refi-closing')?.value)|| 2,
+    };
+    proformaSettings = {
+      ltvPct:              parseFloat(document.getElementById('pf-ltv').value)           || 65,
+      annualRate:          parseFloat(document.getElementById('pf-rate').value)          || 7,
+      amortYears:          parseInt(document.getElementById('pf-amort').value)           || 25,
+      returnOnCostPct:     parseFloat(document.getElementById('pf-roc').value)           || 8,
+      prefEquityPct:       parseFloat(document.getElementById('pf-pref-eq').value)       || 20,
+      prefReturnPct:       parseFloat(document.getElementById('pf-pref-ret').value)      || 12,
+      pursuitCostDollar:   parseFloat(document.getElementById('pf-pursuit-dollar').value)|| 10000,
+      closingFeeDollar:    parseFloat(document.getElementById('pf-closing-fee').value)   || 10000,
+      closingCostPct:      parseFloat(document.getElementById('pf-closing-pct').value)   || 3,
+      interestReserveMonths:parseInt(document.getElementById('pf-ir-months').value)      || 6,
+      dcrTarget:           parseFloat(document.getElementById('pf-dcr').value)           || 1.25,
+      carryPeriodMonths:   parseInt(document.getElementById('pf-carry-months').value)    || 12,
+      ...refiPart
+    };
+    await db.collection('settings').doc('proforma').set(proformaSettings);
+    toast('✅','Pro Forma saved','All rents and refi calcs updated');
+    renderKanban(); renderAdminTable(); renderAdminPubTable(); renderPublicTables();
+  });
+
+  document.getElementById('btn-save-refi').addEventListener('click', async ()=>{
+    proformaSettings.refiRate          = parseFloat(document.getElementById('pf-refi-rate').value)    || 6.5;
+    proformaSettings.refiAmortYears    = parseInt(document.getElementById('pf-refi-amort').value)     || 20;
+    proformaSettings.refiDcr           = parseFloat(document.getElementById('pf-refi-dcr').value)     || 1.25;
+    proformaSettings.refiClosingCostPct= parseFloat(document.getElementById('pf-refi-closing').value) || 2;
+    await db.collection('settings').doc('proforma').set(proformaSettings);
+    toast('✅','Refi settings saved','');
+  });
+
+  document.getElementById('btn-save-api-key').addEventListener('click', async ()=>{
+    anthropicApiKey = document.getElementById('pf-api-key').value.trim();
+    await db.collection('settings').doc('general').set({anthropicApiKey},{merge:true});
+    toast('✅','API Key saved','AI document reading enabled');
+    updateDropZone();
+  });
+}
+
+// ── PRO FORMA ────────────────────────────────────────────────
+// ── PRO FORMA HELPERS ────────────────────────────────────────
+function _pfBasis(price, pf){
+  const pursuit  = pf.pursuitCostDollar  || 10000;
+  const closFee  = pf.closingFeeDollar   || 10000;
+  const closPct  = (pf.closingCostPct    || 3) / 100;
+  const ltv      = (pf.ltvPct            || 65) / 100;
+  const rate     = (pf.annualRate        || 7)  / 100;
+  const irMonths = pf.interestReserveMonths || 6;
+  const debt     = price * ltv;
+  const ir       = debt * rate * (irMonths / 12);
+  const basis    = price + pursuit + closFee + (price * closPct) + ir;
+  return { basis, debt, ir, equity: basis - debt };
+}
+
+function calcRent(askingPrice){
+  if(!askingPrice) return null;
+  const price = parseFloat(askingPrice);
+  if(!price||price<=0) return null;
+  const pf  = proformaSettings;
+  const { basis, debt, equity } = _pfBasis(price, pf);
+  const ltv     = (pf.ltvPct||65)/100;
+  const rate    = (pf.annualRate||7)/100;
+  const n       = (pf.amortYears||25)*12;
+  const roc     = (pf.returnOnCostPct||8)/100;
+  const prefEq  = (pf.prefEquityPct||20)/100;
+  const prefRet = (pf.prefReturnPct||12)/100;
+  const dcr     = pf.dcrTarget||1.25;
+  const mr      = rate/12;
+  const pmt     = mr>0 ? debt*(mr*Math.pow(1+mr,n))/(Math.pow(1+mr,n)-1) : debt/n;
+  const ads     = pmt*12;
+  return Math.max(basis*roc, ads*dcr, ads+(equity*prefEq*prefRet));
+}
+
+function calcRefi(askingPrice){
+  if(!askingPrice) return null;
+  const price = parseFloat(askingPrice);
+  if(!price||price<=0) return null;
+  const pf  = proformaSettings;
+  const noi = calcRent(price);
+  if(!noi) return null;
+
+  const { basis, debt: constDebt, equity, ir } = _pfBasis(price, pf);
+  const prefEqPct  = (pf.prefEquityPct||20)/100;
+  const prefRetPct = (pf.prefReturnPct||12)/100;
+  const carry      = pf.carryPeriodMonths || 12;
+  const prefAmt    = equity * prefEqPct;
+  const prefAccrue = prefAmt * prefRetPct * (carry/12);
+  const prefBal    = prefAmt + prefAccrue;
+
+  // Refi loan: max out DCR
+  const rr   = (pf.refiRate||6.5)/100;
+  const rn   = (pf.refiAmortYears||20)*12;
+  const rdcr = pf.refiDcr||1.25;
+  const rcc  = (pf.refiClosingCostPct||2)/100;
+  const rmr  = rr/12;
+  const rmPmt= rmr>0 ? rmr*Math.pow(1+rmr,rn)/(Math.pow(1+rmr,rn)-1) : 1/rn;
+  const rAnn = rmPmt*12;
+  const refiLoan     = (noi/rdcr) / rAnn;
+  const refiClosing  = refiLoan * rcc;
+  const netCashOut   = refiLoan - constDebt - refiClosing;
+  const surplus      = netCashOut - prefBal;
+
+  return {
+    noi:       Math.round(noi),
+    basis:     Math.round(basis),
+    constDebt: Math.round(constDebt),
+    equity:    Math.round(equity),
+    ir:        Math.round(ir),
+    prefAmt:   Math.round(prefAmt),
+    prefAccrue:Math.round(prefAccrue),
+    prefBal:   Math.round(prefBal),
+    refiLoan:  Math.round(refiLoan),
+    refiAds:   Math.round(noi/rdcr),
+    refiClosing:Math.round(refiClosing),
+    netCashOut:Math.round(netCashOut),
+    surplus:   Math.round(surplus),
+    ok:        surplus >= 0,
+  };
+}
+
+function fmt$(n){ return n ? '$'+Math.round(n).toLocaleString() : '—'; }
+
+// ── ADMIN VIEW SWITCHING ─────────────────────────────────────
+function setAdminView(v){
+  adminView = v;
+  ['kanban','spreadsheet','frontend','deaddeals','settings'].forEach(n=>{
+    const el = document.getElementById('admin-'+n+'-content');
+    if(el) el.style.display='none';
+  });
+  const t = document.getElementById('admin-'+v+'-content');
+  if(t) t.style.display='block';
+  document.querySelectorAll('.view-pill').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
+  if(v==='deaddeals') renderDeadDeals();
+  if(v==='settings')  renderSettingsView();
+  if(v==='spreadsheet') renderAdminTable();
+}
+document.getElementById('admin-view-pills').addEventListener('click',e=>{
+  if(e.target.classList.contains('view-pill')) setAdminView(e.target.dataset.view);
+});
+
+// ── DEAD DEALS ───────────────────────────────────────────────
+function isArchivedDead(prop){
+  if(prop.stage!=='dead'||!prop.deadAt) return false;
+  const ts = prop.deadAt.toDate ? prop.deadAt.toDate().getTime() : new Date(prop.deadAt).getTime();
+  return (Date.now()-ts) > 172800000; // 2 days in ms
+}
+
+function renderDeadDeals(){
+  const c = document.getElementById('dead-deals-container');
+  const dead = Object.values(allProperties)
+    .filter(p=>p.stage==='dead')
+    .sort((a,b)=>(b.deadAt?.toDate?.()?.getTime()||0)-(a.deadAt?.toDate?.()?.getTime()||0));
+  if(!dead.length){
+    c.innerHTML='<div class="empty-state"><div class="empty-icon">☠️</div><h3>No Dead Deals</h3><p>Properties moved to Dead appear here.</p></div>';
+    return;
+  }
+  const rows = dead.map(p=>{
+    const arch = isArchivedDead(p);
+    const dt   = p.deadAt?.toDate?.();
+    return `<tr>
+      <td><strong>${esc(p.address||'')}</strong></td>
+      <td>${esc(p.city||'')}${p.state?', '+esc(p.state):''}</td>
+      <td>${fmt$(p.price)}</td>
+      <td style="color:${p.pursuitCosts?'#f87171':'var(--text-muted)'}">
+        ${p.pursuitCosts ? '$'+Number(p.pursuitCosts).toLocaleString() : '—'}
+      </td>
+      <td style="color:var(--text-muted)">${dt?dt.toLocaleDateString():'—'}</td>
+      <td><span class="${arch?'chip-archived':'chip-grace'}">${arch?'Archived':'Grace Period'}</span></td>
+      <td><button class="btn btn-secondary btn-sm" data-reactivate="${p.id}">↩ Reactivate</button></td>
+    </tr>`;
+  }).join('');
+  c.innerHTML=`<h2 style="font-size:20px;font-weight:700;margin-bottom:20px;">☠ Dead Deals</h2>
+    <div class="table-wrap"><table class="data-table">
+      <thead><tr><th>Address</th><th>City</th><th>Asking Price</th><th>Lost Pursuit $</th><th>Dead Since</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+  c.querySelectorAll('[data-reactivate]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id = btn.dataset.reactivate;
+      await db.collection('properties').doc(id).update({
+        stage:'possible',
+        deadAt: firebase.firestore.FieldValue.delete(),
+        pursuitCosts: firebase.firestore.FieldValue.delete(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      toast('✅','Deal reactivated',allProperties[id]?.address||'');
+    });
+  });
+}
+
+// ── DEAD PROMPT MODAL ────────────────────────────────────────
+function showDeadPrompt(propId,oldStage){
+  pendingDeadMove = {propId,oldStage};
+  document.getElementById('dead-pursuit-cost').value='';
+  document.getElementById('dead-prompt-modal').classList.remove('hidden');
+}
+async function execDeadMove(cost){
+  if(!pendingDeadMove) return;
+  const {propId,oldStage} = pendingDeadMove;
+  pendingDeadMove = null;
+  document.getElementById('dead-prompt-modal').classList.add('hidden');
+  const updates = { stage:'dead', deadAt:firebase.firestore.FieldValue.serverTimestamp(), updatedAt:firebase.firestore.FieldValue.serverTimestamp() };
+  const pc = parseFloat(cost)||0;
+  if(pc>0) updates.pursuitCosts = pc;
+  try{
+    await db.collection('properties').doc(propId).update(updates);
+    triggerAutomations(propId,oldStage,'dead',allProperties[propId]?.address||'');
+  }catch(err){ toast('❌','Update failed',err.message); }
+}
+document.getElementById('dead-confirm').addEventListener('click',()=>execDeadMove(document.getElementById('dead-pursuit-cost').value));
+document.getElementById('dead-skip').addEventListener('click',()=>execDeadMove(0));
+document.getElementById('dead-cancel-x').addEventListener('click',()=>{
+  pendingDeadMove=null;
+  document.getElementById('dead-prompt-modal').classList.add('hidden');
+  renderKanban();
+});
+
+// ── KANBAN ───────────────────────────────────────────────────
+function renderKanban(){
+  const board = document.getElementById('kanban-board');
+  board.innerHTML='';
+  STAGES.forEach(stage=>{
+    let props = Object.values(allProperties).filter(p=>p.stage===stage.id);
+    if(stage.id==='dead') props = props.filter(p=>!isArchivedDead(p));
+    const col = document.createElement('div');
+    col.className='kanban-col'; col.dataset.stage=stage.id;
+    col.innerHTML=`
+      <div class="kanban-col-header">
+        <div class="kanban-col-title"><div class="stage-dot" style="background:${stage.color}"></div>${stage.label}</div>
+        <span class="kanban-col-count">${props.length}</span>
+      </div>
+      <div class="kanban-cards" id="col-${stage.id}" data-stage="${stage.id}"></div>`;
+    const cards = col.querySelector('.kanban-cards');
+    props.forEach(p=>cards.appendChild(buildCard(p)));
+    cards.addEventListener('dragover',e=>{e.preventDefault();cards.classList.add('drag-over');});
+    cards.addEventListener('dragleave',()=>cards.classList.remove('drag-over'));
+    cards.addEventListener('drop',onDrop);
+    board.appendChild(col);
+  });
+}
+
+function buildCard(prop){
+  const rent    = calcRent(prop.price);
+  const pps     = prop.price&&prop.parkingStalls ? Math.round(prop.price/prop.parkingStalls) : null;
+  const lps     = rent&&prop.stallsNeeded ? Math.round(rent/prop.stallsNeeded) : null;
+  const fbOpt   = FB_MAP[prop.feedbackSummary||''];
+  const card    = document.createElement('div');
+  card.className='prop-card'; card.draggable=true; card.dataset.id=prop.id;
+
+  let extra='';
+  if(prop.listingBroker||prop.brokerPhone)
+    extra+=`<div class="card-broker">🏢 ${esc(prop.listingBroker||'—')}${prop.brokerPhone?' · 📞 '+esc(prop.brokerPhone):''}</div>`;
+  if(prop.stage==='offer_outstanding'&&prop.offeredTerms)
+    extra+=`<div class="card-offer-terms">📋 ${esc(prop.offeredTerms)}</div>`;
+  if(DD_STAGES.includes(prop.stage)){
+    const ds = [prop.dueDiligenceDate?'DD: '+prop.dueDiligenceDate:'', prop.closingTargetDate?'Close: '+prop.closingTargetDate:''].filter(Boolean).join(' · ');
+    if(ds) extra+=`<div class="card-dates">📅 ${esc(ds)}</div>`;
+  }
+
+  card.innerHTML=`
+    <button class="card-menu-btn" data-id="${prop.id}">✏️</button>
+    <div class="prop-card-address">${esc(prop.address)}</div>
+    <div class="prop-card-meta">${esc(prop.city||'')}${prop.state?', '+esc(prop.state):''}${prop.zoning?' · '+esc(prop.zoning):''}${prop.parkingStalls?' · '+prop.parkingStalls+' stalls':''}</div>
+    ${extra}
+    <div class="card-info-row">
+      ${prop.price?`<span>ASK: <span class="ci-val">${fmt$(prop.price)}</span></span>`:''}
+      ${pps?`<span>$/stall: <span class="ci-val">${fmt$(pps)}</span></span>`:''}
+    </div>
+    <div class="card-footer">
+      ${rent?`<span class="nnn-chip">NNN: ${fmt$(rent)}/yr</span>`:'<span style="color:var(--text-muted);font-size:11px;">No asking price</span>'}
+      <div style="display:flex;gap:4px;align-items:center;">
+        ${lps?`<span style="font-size:11px;color:var(--text-muted);">${fmt$(lps)}/stall</span>`:''}
+        ${fbOpt&&fbOpt.chip?`<span class="fb-chip ${fbOpt.chip}" style="font-size:10px">${fbOpt.label}</span>`:''}
+      </div>
+    </div>`;
+  card.addEventListener('dragstart',onDragStart);
+  card.querySelector('.card-menu-btn').addEventListener('click',e=>{e.stopPropagation();openPropertyModal(prop.id);});
+  return card;
+}
+
+let draggingId=null;
+function onDragStart(e){ draggingId=e.currentTarget.dataset.id; e.currentTarget.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; }
+async function onDrop(e){
+  e.preventDefault();
+  document.querySelectorAll('.kanban-cards').forEach(c=>c.classList.remove('drag-over'));
+  if(!draggingId) return;
+  const newStage = e.currentTarget.dataset.stage;
+  const prop     = allProperties[draggingId];
+  if(!prop||prop.stage===newStage){ draggingId=null; return; }
+  const oldStage = prop.stage;
+  const id       = draggingId;
+  draggingId     = null;
+  if(newStage==='dead'){ showDeadPrompt(id,oldStage); return; }
+  allProperties[id].stage=newStage; renderKanban();
+  try{
+    await db.collection('properties').doc(id).update({stage:newStage,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+    triggerAutomations(id,oldStage,newStage,prop.address);
+  }catch(err){ allProperties[id].stage=oldStage; renderKanban(); toast('❌','Update failed',err.message); }
+}
+
+// ── AUTOMATIONS ──────────────────────────────────────────────
+async function triggerAutomations(propId,fromStage,toStage,address){
+  const key  = fromStage+'→'+toStage;
+  const tpls = AUTOMATIONS[key]||(toStage==='dead'?AUTOMATIONS['→dead']:[]);
+  if(!tpls.length) return;
+  toast('⚡','Automation triggered',tpls.length+' task(s) created');
+  const batch = db.batch();
+  tpls.forEach(t=>{
+    const ref = db.collection('tasks').doc();
+    batch.set(ref,{title:t.title,desc:t.desc,propertyId:propId,propertyAddress:address,status:'pending',triggeredBy:key,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+  });
+  await batch.commit();
+  openTasksPanel();
+}
+
+// ── ADMIN SPREADSHEET ────────────────────────────────────────
+function renderAdminTable(){
+  const search = (document.getElementById('admin-search')?.value||'').toLowerCase();
+  const stageF = document.getElementById('admin-stage-filter')?.value||'';
+  let props = Object.values(allProperties).filter(p=>{
+    return (!stageF||p.stage===stageF) &&
+      (!search||(p.address||'').toLowerCase().includes(search)||(p.city||'').toLowerCase().includes(search));
+  });
+  if(sortState.col){
+    props.sort((a,b)=>{
+      let av=a[sortState.col]||'',bv=b[sortState.col]||'';
+      if(sortState.col==='price'){av=Number(av)||0;bv=Number(bv)||0;}
+      return (av>bv?1:av<bv?-1:0)*sortState.dir;
+    });
+  }
+  const tbody=document.getElementById('admin-tbody');
+  if(!props.length){ tbody.innerHTML='<tr><td colspan="15"><div class="empty-state"><div class="empty-icon">🏗️</div><h3>No properties</h3></div></td></tr>'; return; }
+  tbody.innerHTML=props.map(p=>{
+    const rent = calcRent(p.price);
+    const pps  = p.price&&p.parkingStalls ? Math.round(p.price/p.parkingStalls) : null;
+    const lps  = rent&&p.stallsNeeded     ? Math.round(rent/p.stallsNeeded)     : null;
+    const fbOpt= FB_MAP[p.feedbackSummary||''];
+    const fbChip= fbOpt&&fbOpt.chip?`<span class="fb-chip ${fbOpt.chip}">${fbOpt.label}</span>`:`<span style="color:var(--text-muted)">—</span>`;
+    return `<tr>
+      <td class="editable" data-id="${p.id}" data-field="address">${esc(p.address||'')}</td>
+      <td class="editable" data-id="${p.id}" data-field="city">${esc(p.city||'')}</td>
+      <td class="editable" data-id="${p.id}" data-field="state">${esc(p.state||'')}</td>
+      <td class="editable" data-id="${p.id}" data-field="price">${p.price?'$'+Number(p.price).toLocaleString():'—'}</td>
+      <td style="color:var(--text-muted)">${pps?'$'+pps.toLocaleString():'—'}</td>
+      <td style="color:var(--accent);font-weight:600">${rent?'$'+Math.round(rent).toLocaleString()+'/yr':'—'}</td>
+      <td style="color:var(--text-muted)">${lps?'$'+lps.toLocaleString():'—'}</td>
+      <td class="editable" data-id="${p.id}" data-field="size">${esc(p.size||'')}</td>
+      <td class="editable" data-id="${p.id}" data-field="parkingStalls">${p.parkingStalls||'—'}</td>
+      <td class="editable" data-id="${p.id}" data-field="zoning">${esc(p.zoning||'')}</td>
+      <td>${esc(p.listingBroker||'—')}</td>
+      <td><select class="stage-sel" data-id="${p.id}" style="background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:3px 8px;color:var(--text);">
+        ${STAGES.map(s=>`<option value="${s.id}" ${p.stage===s.id?'selected':''}>${s.label}</option>`).join('')}
+      </select></td>
+      <td>${fbChip}</td>
+      <td class="editable" data-id="${p.id}" data-field="notes" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(p.notes||'')}">${esc(p.notes||'')}</td>
+      <td><div style="display:flex;gap:6px;">
+        <button class="btn btn-secondary btn-sm" data-edit="${p.id}">Edit</button>
+        <button class="btn btn-danger btn-sm" data-delete="${p.id}">Del</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+  tbody.querySelectorAll('.stage-sel').forEach(sel=>{
+    sel.addEventListener('change', async e=>{
+      const id=e.target.dataset.id, ns=e.target.value, prop=allProperties[id];
+      if(!prop||prop.stage===ns) return;
+      if(ns==='dead'){ showDeadPrompt(id,prop.stage); e.target.value=prop.stage; return; }
+      const os=prop.stage;
+      await db.collection('properties').doc(id).update({stage:ns,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+      triggerAutomations(id,os,ns,prop.address);
+    });
+  });
+  tbody.querySelectorAll('.editable').forEach(td=>{
+    td.addEventListener('dblclick',()=>{
+      const id=td.dataset.id,field=td.dataset.field,val=allProperties[id]?.[field]||'';
+      const inp=document.createElement('input'); inp.value=val; inp.style.width='100%';
+      td.innerHTML=''; td.appendChild(inp); inp.focus();
+      const save=async()=>{
+        const nv=inp.value.trim();
+        const uv=field==='parkingStalls'?(parseInt(nv)||null):nv;
+        await db.collection('properties').doc(id).update({[field]:uv,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+      };
+      inp.addEventListener('blur',save);
+      inp.addEventListener('keydown',e=>{if(e.key==='Enter')inp.blur();if(e.key==='Escape')renderAdminTable();});
+    });
+  });
+  tbody.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click',()=>openPropertyModal(b.dataset.edit)));
+  tbody.querySelectorAll('[data-delete]').forEach(b=>b.addEventListener('click',()=>deleteProperty(b.dataset.delete)));
+}
+document.getElementById('admin-search')?.addEventListener('input',renderAdminTable);
+document.getElementById('admin-stage-filter')?.addEventListener('change',renderAdminTable);
+
+// ── PUBLIC TABLES ────────────────────────────────────────────
+function renderPublicTables(){
+  const props = Object.values(allProperties).filter(p=>p.publicVisible!==false&&p.stage!=='dead'&&p.stage!=='closed');
+  const active=props.filter(p=>p.feedbackSummary!=='pass');
+  const passed=props.filter(p=>p.feedbackSummary==='pass');
+  const ca=document.getElementById('tab-count-active'); if(ca) ca.textContent=active.length;
+  const cp=document.getElementById('tab-count-passed'); if(cp) cp.textContent=passed.length;
+  renderActiveTable('public-tbody',active,false);
+  renderPassedTable('passed-tbody',passed,false);
+}
+function renderAdminPubTable(){
+  const props=Object.values(allProperties).filter(p=>p.publicVisible!==false&&p.stage!=='dead'&&p.stage!=='closed');
+  const active=props.filter(p=>p.feedbackSummary!=='pass');
+  const passed=props.filter(p=>p.feedbackSummary==='pass');
+  const ca=document.getElementById('preview-count-active'); if(ca) ca.textContent=active.length;
+  const cp=document.getElementById('preview-count-passed'); if(cp) cp.textContent=passed.length;
+  renderActiveTable('admin-pub-tbody',active,true);
+  renderPassedTable('admin-passed-tbody',passed,true);
+}
+function fbSelHTML(propId,val){
+  const opts=FB_SUMMARY_OPTIONS.map(o=>`<option value="${o.value}" ${val===o.value?'selected':''}>${o.label}</option>`).join('');
+  return `<select class="fb-summary-select${val?' val-'+val:''}" data-prop-id="${propId}">${opts}</select>`;
+}
+function renderActiveTable(tbodyId,props,isPreview){
+  const tbody=document.getElementById(tbodyId); if(!tbody) return;
+  if(!props.length){ tbody.innerHTML='<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">🏗️</div><h3>No active prospects</h3></div></td></tr>'; return; }
+  tbody.innerHTML=props.map(p=>{
+    const rent=calcRent(p.price);
+    return `<tr>
+      <td><strong>${esc(p.address||'')}</strong></td>
+      <td>${esc(p.city||'')}${p.state?', '+esc(p.state):''}</td>
+      <td style="font-weight:600;color:var(--accent)">${rent?'$'+Math.round(rent).toLocaleString()+'/yr':'—'}</td>
+      <td>${esc(p.size||'—')}</td>
+      <td>${p.parkingStalls??'—'}</td>
+      <td><span class="stage-badge stage-${p.stage||'possible'}">${STAGE_MAP[p.stage]?.label||'Possible'}</span></td>
+      <td>${fbSelHTML(p.id,p.feedbackSummary||'')}</td>
+      <td><input type="number" class="stalls-input" data-prop-id="${p.id}" value="${p.stallsNeeded||''}" placeholder="Enter stalls…" min="0"></td>
+    </tr>`;
+  }).join('');
+  tbody.querySelectorAll('.fb-summary-select').forEach(sel=>{
+    sel.addEventListener('change', async e=>{
+      const pid=e.target.dataset.propId, nv=e.target.value;
+      e.target.className='fb-summary-select'+(nv?' val-'+nv:'');
+      await savePropField(pid,'feedbackSummary',nv);
+      if(nv==='pass'){ renderPublicTables(); renderAdminPubTable(); renderKanban(); renderAdminTable(); }
+      if(!currentUser&&nv){
+        await db.collection('tasks').add({title:`Feedback: ${FB_MAP[nv]?.label} — ${allProperties[pid]?.address||pid}`,desc:`Public user set feedback to "${FB_MAP[nv]?.label}"`,propertyId:pid,propertyAddress:allProperties[pid]?.address||'',status:'pending',triggeredBy:'public_feedback',createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+      }
+    });
+  });
+  tbody.querySelectorAll('.stalls-input').forEach(inp=>{
+    inp.addEventListener('change', async e=>{
+      await savePropField(e.target.dataset.propId,'stallsNeeded',parseInt(e.target.value)||null);
+    });
+  });
+}
+function renderPassedTable(tbodyId,props,isPreview){
+  const tbody=document.getElementById(tbodyId); if(!tbody) return;
+  if(!props.length){ tbody.innerHTML='<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">📁</div><h3>No passed sites</h3></div></td></tr>'; return; }
+  tbody.innerHTML=props.map(p=>{
+    const rent=calcRent(p.price);
+    return `<tr>
+      <td><strong>${esc(p.address||'')}</strong></td>
+      <td>${esc(p.city||'')}${p.state?', '+esc(p.state):''}</td>
+      <td>${rent?'$'+Math.round(rent).toLocaleString()+'/yr':'—'}</td>
+      <td>${esc(p.size||'—')}</td>
+      <td>${p.parkingStalls??'—'}</td>
+      <td><span class="stage-badge stage-${p.stage||'possible'}">${STAGE_MAP[p.stage]?.label||'Possible'}</span></td>
+      <td>${p.stallsNeeded||'—'}</td>
+      <td><button class="btn-restore" data-restore="${p.id}">↩ Add Back</button></td>
+    </tr>`;
+  }).join('');
+  tbody.querySelectorAll('[data-restore]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      await savePropField(btn.dataset.restore,'feedbackSummary','');
+      renderPublicTables(); renderAdminPubTable(); renderKanban(); renderAdminTable();
+      toast('✅','Site restored','Moved back to Active Prospects');
+    });
+  });
+}
+async function savePropField(propId,field,value){
+  try{
+    await db.collection('properties').doc(propId).update({[field]:value,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+    if(allProperties[propId]) allProperties[propId][field]=value;
+  }catch(err){ toast('❌','Save failed',err.message); }
+}
+
+// Public tab switching
+document.querySelectorAll('.public-tab-btn[data-tab]').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    publicActiveTab=btn.dataset.tab;
+    document.querySelectorAll('.public-tab-btn[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===publicActiveTab));
+    document.getElementById('tab-active').style.display=publicActiveTab==='active'?'block':'none';
+    document.getElementById('tab-passed').style.display=publicActiveTab==='passed'?'block':'none';
+  });
+});
+document.querySelectorAll('.public-tab-btn[data-preview-tab]').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    previewTab=btn.dataset.previewTab;
+    document.querySelectorAll('.public-tab-btn[data-preview-tab]').forEach(b=>b.classList.toggle('active',b.dataset.previewTab===previewTab));
+    document.getElementById('preview-tab-active').style.display=previewTab==='active'?'block':'none';
+    document.getElementById('preview-tab-passed').style.display=previewTab==='passed'?'block':'none';
+  });
+});
+
+// ── PROPERTY MODAL ───────────────────────────────────────────
+function updateDropZone(){
+  const dz=document.getElementById('doc-drop-zone');
+  if(dz) dz.style.display=anthropicApiKey?'block':'none';
+}
+
+function openPropertyModal(id=null){
+  const p=id?allProperties[id]:null;
+  document.getElementById('prop-modal-title').textContent=p?'Edit Property':'Add Property';
+  document.getElementById('prop-id').value=id||'';
+  const set=(elId,val)=>{ const el=document.getElementById(elId); if(el) el.value=val||''; };
+  set('prop-address',p?.address); set('prop-city',p?.city); set('prop-state',p?.state);
+  set('prop-price',p?.price); set('prop-size',p?.size); set('prop-parking',p?.parkingStalls);
+  set('prop-zoning',p?.zoning); set('prop-broker',p?.listingBroker); set('prop-broker-phone',p?.brokerPhone);
+  set('prop-offered-terms',p?.offeredTerms); set('prop-dd-date',p?.dueDiligenceDate);
+  set('prop-closing-date',p?.closingTargetDate); set('prop-seller',p?.sellerName);
+  set('prop-county',p?.county); set('prop-legal-desc',p?.legalDesc);
+  set('prop-sec',p?.secVal); set('prop-twp',p?.twpVal); set('prop-rng',p?.rngVal);
+  set('prop-init-deposit',p?.initDeposit); set('prop-deposit-days',p?.depositDays);
+  set('prop-notes',p?.notes);
+  document.getElementById('prop-stage').value=p?.stage||'possible';
+  document.getElementById('prop-public').checked=p?(p.publicVisible!==false):true;
+  const psaBtn=document.getElementById('btn-gen-psa');
+  psaBtn.style.display=(p&&p.stage==='draft_offer')?'inline-flex':'none';
+  psaBtn.onclick=()=>{ closeModal('property-modal'); generatePSA(id); };
+  updateDropZone();
+  const dz=document.getElementById('doc-drop-zone');
+  if(dz){ dz.className='doc-drop-zone'; dz.innerHTML='🤖 Drop a PDF or image here — AI will auto-fill the fields below<div style="font-size:11px;margin-top:3px;opacity:.7">Click to browse · Supports PDF, JPG, PNG</div>'; }
+
+  // Pro Forma Analysis panel
+  renderPropPFAnalysis(p?.price);
+
+  // Live update analysis as user types asking price
+  const priceInput = document.getElementById('prop-price');
+  if(priceInput){
+    priceInput._pfHandler && priceInput.removeEventListener('input', priceInput._pfHandler);
+    priceInput._pfHandler = ()=>renderPropPFAnalysis(priceInput.value);
+    priceInput.addEventListener('input', priceInput._pfHandler);
+  }
+
+  document.getElementById('property-modal').classList.remove('hidden');
+}
+
+function renderPropPFAnalysis(askingPrice){
+  const el = document.getElementById('prop-pf-analysis');
+  if(!el) return;
+  const r = calcRefi(askingPrice);
+  if(!r){ el.style.display='none'; return; }
+  const pf = proformaSettings;
+  el.style.display='block';
+  const surplusColor = r.ok ? '#4ade80' : '#f87171';
+  const surplusIcon  = r.ok ? '✅' : '⚠️';
+  el.innerHTML=`
+    <div class="modal-section">
+      <div class="modal-section-label">Pro Forma Analysis</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+
+        <!-- Acquisition -->
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;">
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;">Acquisition Basis</div>
+          ${pfRow('Purchase Price', fmt$(parseFloat(askingPrice)))}
+          ${pfRow('Soft Costs ('+(pf.closingCostPct||3)+'%)', fmt$(parseFloat(askingPrice)*(pf.closingCostPct||3)/100))}
+          ${pfRow('Pursuit Cost', fmt$(pf.pursuitCostDollar||10000))}
+          ${pfRow('Closing Fee', fmt$(pf.closingFeeDollar||10000))}
+          ${pfRow('Interest Reserve ('+(pf.interestReserveMonths||6)+' mo)', fmt$(r.ir))}
+          <div style="border-top:1px solid var(--border);margin:8px 0;"></div>
+          ${pfRow('Total Basis', fmt$(r.basis), true)}
+          ${pfRow('Construction Debt ('+(pf.ltvPct||65)+'%)', fmt$(r.constDebt))}
+          ${pfRow('Total Equity Required', fmt$(r.equity), true)}
+          ${pfRow('Pref Equity ('+(pf.prefEquityPct||20)+'%)', fmt$(r.prefAmt))}
+        </div>
+
+        <!-- Refi -->
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;">
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;">Refi Analysis (${pf.carryPeriodMonths||12} mo carry)</div>
+          ${pfRow('Proposed NNN Rent', fmt$(r.noi)+'/yr', true)}
+          ${pfRow('Max Refi ADS (÷'+( pf.refiDcr||1.25)+')', fmt$(r.refiAds))}
+          ${pfRow('Refi Loan @ '+(pf.refiRate||6.5)+'%/'+( pf.refiAmortYears||20)+'yr', fmt$(r.refiLoan))}
+          ${pfRow('Less: Orig Debt', '('+fmt$(r.constDebt)+')')}
+          ${pfRow('Less: Refi Closing ('+(pf.refiClosingCostPct||2)+'%)', '('+fmt$(r.refiClosing)+')')}
+          <div style="border-top:1px solid var(--border);margin:8px 0;"></div>
+          ${pfRow('Net Cash Out', fmt$(r.netCashOut), true)}
+          <div style="border-top:1px solid var(--border);margin:8px 0;"></div>
+          ${pfRow('Pref Equity Principal', fmt$(r.prefAmt))}
+          ${pfRow('Accrued Pref Return', fmt$(r.prefAccrue))}
+          ${pfRow('Pref Balance Due', fmt$(r.prefBal), true)}
+          <div style="border-top:1px solid var(--border);margin:8px 0;"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-weight:700;font-size:13px;">Surplus / (Shortfall)</span>
+            <span style="font-weight:800;font-size:14px;color:${surplusColor}">${surplusIcon} ${r.surplus>=0?fmt$(r.surplus):'('+fmt$(Math.abs(r.surplus))+')'}</span>
+          </div>
+        </div>
+
+      </div>
+    </div>`;
+}
+
+function pfRow(label, value, bold=false){
+  return `<div style="display:flex;justify-content:space-between;margin-bottom:5px;font-size:12px;">
+    <span style="color:var(--text-muted);${bold?'font-weight:700;color:var(--text)':''}">${label}</span>
+    <span style="${bold?'font-weight:700':''}">${value}</span>
+  </div>`;
+}
+
+// Drop zone wiring
+(function setupDropZone(){
+  const dz=document.getElementById('doc-drop-zone');
+  if(!dz) return;
+  async function processFile(file){
+    if(!file) return;
+    if(!anthropicApiKey){ toast('❌','No API key','Set it in Settings'); return; }
+    dz.className='doc-drop-zone loading'; dz.textContent='🔄 Reading document with AI…';
+    try{
+      const b64=await fileToB64(file);
+      const r=await callClaude(b64,file.type||'application/pdf');
+      const fields=[['prop-address','address'],['prop-city','city'],['prop-state','state'],['prop-price','price'],['prop-size','size'],['prop-parking','parkingStalls'],['prop-zoning','zoning'],['prop-seller','sellerName'],['prop-county','county'],['prop-legal-desc','legalDesc']];
+      let n=0;
+      fields.forEach(([elId,key])=>{ if(r[key]){ document.getElementById(elId).value=r[key]; n++; } });
+      dz.className='doc-drop-zone success'; dz.textContent=`✅ Auto-filled ${n} field(s) from document`;
+    }catch(err){ dz.className='doc-drop-zone error'; dz.textContent='❌ '+err.message; }
+  }
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-over');});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('drag-over'));
+  dz.addEventListener('drop',async e=>{e.preventDefault();dz.classList.remove('drag-over');processFile(e.dataTransfer.files[0]);});
+  dz.addEventListener('click',()=>{
+    const inp=document.createElement('input'); inp.type='file'; inp.accept='.pdf,image/*';
+    inp.onchange=e=>processFile(e.target.files[0]); inp.click();
+  });
+})();
+
+function fileToB64(file){
+  return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=e=>res(e.target.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(file); });
+}
+async function callClaude(b64,mediaType){
+  if(!anthropicApiKey) throw new Error('No API key. Set it in Settings.');
+  const block = mediaType==='application/pdf'
+    ? {type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}}
+    : {type:'image',source:{type:'base64',media_type:mediaType,data:b64}};
+  const resp = await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':anthropicApiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1024,messages:[{role:'user',content:[block,{type:'text',text:'Extract property info. Return ONLY valid JSON: {"address":"street only","city":"","state":"2-letter or null","price":numberOrNull,"size":"acreage string or null","parkingStalls":numberOrNull,"zoning":"or null","sellerName":"or null","county":"or null","legalDesc":"or null"}. Null for not found.'}]}]})
+  });
+  if(!resp.ok) throw new Error('Claude API '+resp.status);
+  const data=await resp.json();
+  const txt=data.content[0].text.trim();
+  const m=txt.match(/\{[\s\S]*\}/);
+  if(!m) throw new Error('No JSON returned');
+  return JSON.parse(m[0]);
+}
+
+document.getElementById('btn-add-property').addEventListener('click',()=>openPropertyModal());
+document.getElementById('btn-save-property').addEventListener('click', async ()=>{
+  const id   = document.getElementById('prop-id').value;
+  const addr = document.getElementById('prop-address').value.trim();
+  const city = document.getElementById('prop-city').value.trim();
+  if(!addr){ alert('Address is required'); return; }
+  const ns = document.getElementById('prop-stage').value;
+  const data={
+    address:addr, city, state:document.getElementById('prop-state').value.trim().toUpperCase(),
+    price:parseFloat(document.getElementById('prop-price').value)||null,
+    size:document.getElementById('prop-size').value.trim(),
+    parkingStalls:parseInt(document.getElementById('prop-parking').value)||null,
+    zoning:document.getElementById('prop-zoning').value.trim(),
+    stage:ns,
+    listingBroker:document.getElementById('prop-broker').value.trim(),
+    brokerPhone:document.getElementById('prop-broker-phone').value.trim(),
+    offeredTerms:document.getElementById('prop-offered-terms').value.trim(),
+    dueDiligenceDate:document.getElementById('prop-dd-date').value,
+    closingTargetDate:document.getElementById('prop-closing-date').value,
+    sellerName:document.getElementById('prop-seller').value.trim(),
+    county:document.getElementById('prop-county').value.trim(),
+    legalDesc:document.getElementById('prop-legal-desc').value.trim(),
+    secVal:document.getElementById('prop-sec').value.trim(),
+    twpVal:document.getElementById('prop-twp').value.trim(),
+    rngVal:document.getElementById('prop-rng').value.trim(),
+    initDeposit:parseFloat(document.getElementById('prop-init-deposit').value)||null,
+    depositDays:parseInt(document.getElementById('prop-deposit-days').value)||null,
+    notes:document.getElementById('prop-notes').value.trim(),
+    publicVisible:document.getElementById('prop-public').checked,
+    updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+  };
+  if(id){
+    const os=allProperties[id]?.stage;
+    if(ns==='dead'&&os!=='dead') data.deadAt=firebase.firestore.FieldValue.serverTimestamp();
+    await db.collection('properties').doc(id).update(data);
+    if(os&&os!==ns) triggerAutomations(id,os,ns,addr);
+  }else{
+    data.createdAt=firebase.firestore.FieldValue.serverTimestamp();
+    if(ns==='dead') data.deadAt=firebase.firestore.FieldValue.serverTimestamp();
+    await db.collection('properties').add(data);
+  }
+  closeModal('property-modal');
+  toast('✅',id?'Property updated':'Property added',addr);
+});
+
+async function deleteProperty(id){
+  const p=allProperties[id];
+  if(!confirm(`Delete "${p?.address}"? Cannot be undone.`)) return;
+  await db.collection('properties').doc(id).delete();
+  toast('🗑️','Deleted',p?.address||id);
+}
+
+// ── PSA GENERATION ───────────────────────────────────────────
+async function generatePSA(propId){
+  const prop=allProperties[propId];
+  if(!prop){ toast('❌','Property not found',''); return; }
+  if(typeof PDFLib==='undefined'){ toast('❌','pdf-lib not loaded','Refresh and try again'); return; }
+  try{
+    toast('⏳','Generating PSA…','Loading FARBAR template');
+    const {PDFDocument,StandardFonts,rgb}=PDFLib;
+    const bytes=await fetch('farbar-template.pdf').then(r=>r.arrayBuffer());
+    const doc=await PDFDocument.load(bytes);
+    const font=await doc.embedFont(StandardFonts.Helvetica);
+    const pages=doc.getPages();
+    const sz=9,clr=rgb(0,0,0);
+    const draw=(pi,txt,x,y)=>{ if(txt) pages[pi].drawText(String(txt),{x,y,size:sz,font,color:clr}); };
+    draw(0,prop.sellerName,    80,706);
+    draw(0,prop.address,       80,665);
+    draw(0,prop.legalDesc,     80,651);
+    draw(0,prop.secVal,        65,584);
+    draw(0,prop.twpVal,       120,584);
+    draw(0,prop.rngVal,       174,584);
+    draw(0,prop.county,       300,571);
+    if(prop.price)       draw(0,'$'+Number(prop.price).toLocaleString(),       188,543);
+    if(prop.initDeposit) draw(0,'$'+Number(prop.initDeposit).toLocaleString(), 255,434);
+    if(prop.depositDays) draw(0,String(prop.depositDays),                      345,421);
+    const blob=new Blob([await doc.save()],{type:'application/pdf'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download=`PSA-${(prop.address||'property').replace(/[^a-z0-9]/gi,'_')}.pdf`;
+    a.click(); URL.revokeObjectURL(url);
+    toast('✅','PSA Generated','PDF downloaded');
+  }catch(err){ toast('❌','PSA failed',err.message); }
+}
+
+// ── TASKS PANEL ──────────────────────────────────────────────
+function openTasksPanel(){ document.getElementById('tasks-panel').classList.add('open'); }
+document.getElementById('btn-tasks-panel').addEventListener('click',openTasksPanel);
+document.getElementById('panel-close-btn').addEventListener('click',()=>document.getElementById('tasks-panel').classList.remove('open'));
+function renderTasksPanel(){
+  const tasks=Object.values(allTasks);
+  const pending=tasks.filter(t=>t.status==='pending').length;
+  const badge=document.getElementById('tasks-badge');
+  if(badge){ badge.textContent=pending; badge.style.display=pending>0?'inline-flex':'none'; }
+  const list=document.getElementById('tasks-list');
+  if(!tasks.length){ list.innerHTML='<div style="color:var(--text-muted);text-align:center;padding:32px 0">No tasks yet.</div>'; return; }
+  list.innerHTML=tasks.map(t=>`
+    <div class="task-item">
+      <div class="task-item-header">
+        <input type="checkbox" class="task-check" data-task-id="${t.id}" ${t.status==='complete'?'checked':''}>
+        <div>
+          <div class="task-title" style="${t.status==='complete'?'text-decoration:line-through;opacity:.5':''}">${esc(t.title)}</div>
+          <div class="task-desc">${esc(t.desc||'')}</div>
+        </div>
+        <span class="task-status ${t.status==='complete'?'task-complete':'task-pending'}">${t.status==='complete'?'Done':'Pending'}</span>
+      </div>
+      ${t.propertyAddress?`<div class="task-prop-tag">📍 ${esc(t.propertyAddress)}</div>`:''}
+    </div>`).join('');
+  list.querySelectorAll('.task-check').forEach(cb=>{
+    cb.addEventListener('change', async e=>{
+      await db.collection('tasks').doc(e.target.dataset.taskId).update({status:e.target.checked?'complete':'pending'});
+    });
+  });
+}
+
+// ── EXPORT ───────────────────────────────────────────────────
+function propsToCSV(){
+  const h=['id','address','city','state','price','size','parkingStalls','zoning','stage','feedbackSummary','stallsNeeded','notes','publicVisible','listingBroker','brokerPhone','offeredTerms','dueDiligenceDate','closingTargetDate'];
+  const rows=Object.values(allProperties).map(p=>h.map(k=>{
+    let v=p[k]??'';
+    if(typeof v==='string'&&(v.includes(',')||v.includes('"')||v.includes('\n'))) v='"'+v.replace(/"/g,'""')+'"';
+    return v;
+  }).join(','));
+  return [h.join(','),...rows].join('\n');
+}
+function dlCSV(csv,fn){ const b=new Blob([csv],{type:'text/csv'}); const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download=fn; a.click(); URL.revokeObjectURL(u); }
+
+// ── IMPORT: PARSE FILE ────────────────────────────────────────
+function parseRow(line){ const r=[]; let cur='',inQ=false; for(let i=0;i<line.length;i++){ const c=line[i]; if(c==='"'){if(inQ&&line[i+1]==='"'){cur+='"';i++;}else inQ=!inQ;}else if(c===','&&!inQ){r.push(cur);cur='';}else cur+=c; } r.push(cur); return r; }
+
+async function parseImportFile(file){
+  const ext = file.name.split('.').pop().toLowerCase();
+  if(ext==='csv'){
+    const text = await file.text();
+    const lines = text.trim().split('\n').filter(l=>l.trim());
+    if(lines.length<2) return null;
+    const headers = parseRow(lines[0]).map(h=>h.trim()).filter(h=>h);
+    const rows=[];
+    for(let i=1;i<lines.length;i++){
+      const vals=parseRow(lines[i]);
+      const obj=Object.fromEntries(headers.map((h,j)=>[h,(vals[j]||'').trim()]));
+      if(Object.values(obj).some(v=>v)) rows.push(obj);
+    }
+    return {headers,rows};
+  }
+  if(ext==='xlsx'||ext==='xls'){
+    if(typeof XLSX==='undefined'){ toast('❌','SheetJS not loaded','Refresh the page'); return null; }
+    const buf = await file.arrayBuffer();
+    const wb  = XLSX.read(buf,{type:'array'});
+    const ws  = wb.Sheets[wb.SheetNames[0]];
+    const data= XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+    if(data.length<2) return null;
+    const headers = data[0].map(h=>String(h).trim()).filter(h=>h);
+    const rows=[];
+    for(let i=1;i<data.length;i++){
+      const obj=Object.fromEntries(headers.map((h,j)=>[h,String(data[i][j]??'').trim()]));
+      if(Object.values(obj).some(v=>v)) rows.push(obj);
+    }
+    return {headers,rows};
+  }
+  toast('❌','Unsupported file type','Use .csv, .xlsx, or .xls'); return null;
+}
+
+// ── IMPORT: COLUMN MAPPER ─────────────────────────────────────
+let _pendingImport = null;
+
+const IMPORT_FIELDS = [
+  { key:'address',          label:'Street Address',    required:true },
+  { key:'city',             label:'City' },
+  { key:'state',            label:'State' },
+  { key:'price',            label:'Asking Price ($)' },
+  { key:'size',             label:'Acreage' },
+  { key:'parkingStalls',    label:'Parking Stalls' },
+  { key:'zoning',           label:'Zoning' },
+  { key:'stage',            label:'Stage' },
+  { key:'listingBroker',    label:'Listing Broker' },
+  { key:'brokerPhone',      label:'Broker Phone' },
+  { key:'offeredTerms',     label:'Offered Terms' },
+  { key:'dueDiligenceDate', label:'DD Date' },
+  { key:'closingTargetDate',label:'Closing Target Date' },
+  { key:'feedbackSummary',  label:'Feedback Summary' },
+  { key:'stallsNeeded',     label:'Stalls Needed' },
+  { key:'notes',            label:'Notes' },
+  { key:'publicVisible',    label:'Public Visible' },
+];
+
+const AUTO_MAP_PATTERNS = {
+  address:          ['address','street address','street','location','property address','site address'],
+  city:             ['city','town','municipality','market'],
+  state:            ['state','st','province'],
+  price:            ['price','asking price','asking','purchase price','list price','cost','sale price'],
+  size:             ['acreage','acres','size','lot size','area','lot acres','sq ft','sqft','sf'],
+  parkingStalls:    ['parking stalls','stalls','parking spaces','spaces','parking','total stalls','num stalls'],
+  zoning:           ['zoning','zone','land use','current zoning'],
+  stage:            ['stage','status','pipeline stage','deal stage'],
+  listingBroker:    ['listing broker','broker','agent','realtor','listing agent'],
+  brokerPhone:      ['broker phone','broker phone number','phone','agent phone','contact','broker contact'],
+  offeredTerms:     ['offered terms','terms','offer terms','deal terms'],
+  dueDiligenceDate: ['dd date','due diligence date','dd','diligence date','due diligence','inspection date'],
+  closingTargetDate:['closing date','close date','closing target','target close','expected close'],
+  feedbackSummary:  ['feedback','feedback summary','disposition','recommendation'],
+  stallsNeeded:     ['stalls needed','needed stalls','required stalls','min stalls'],
+  notes:            ['notes','comments','remarks','description','memo','internal notes'],
+  publicVisible:    ['public','visible','public visible','show public','active'],
+};
+
+function autoMapHeaders(headers){
+  const mapping={};
+  const hLower=headers.map(h=>h.toLowerCase().trim());
+  IMPORT_FIELDS.forEach(f=>{
+    const pats=AUTO_MAP_PATTERNS[f.key]||[f.key.toLowerCase()];
+    for(const pat of pats){
+      const idx=hLower.indexOf(pat);
+      if(idx!==-1){ mapping[f.key]=headers[idx]; break; }
+    }
+    // fuzzy fallback: check if any header contains the field key
+    if(!mapping[f.key]){
+      const idx=hLower.findIndex(h=>h.includes(f.key.toLowerCase())||f.key.toLowerCase().includes(h));
+      if(idx!==-1) mapping[f.key]=headers[idx];
+    }
+  });
+  return mapping;
+}
+
+function showColumnMapper(headers, rows){
+  _pendingImport={headers,rows};
+  const mapping=autoMapHeaders(headers);
+  const preview=rows[0]||{};
+  const opts=`<option value="">— Skip —</option>`+headers.map(h=>`<option value="${esc(h)}">${esc(h)}</option>`).join('');
+
+  const tableRows=IMPORT_FIELDS.map(f=>{
+    const sel=document.createElement('select');
+    sel.className='form-control form-select'; sel.id='map-'+f.key;
+    sel.style.cssText='font-size:12px;padding:4px 8px;';
+    sel.innerHTML=opts;
+    if(mapping[f.key]) sel.value=mapping[f.key];
+    const selHtml=sel.outerHTML;
+    const mapped=mapping[f.key];
+    const pv=mapped?esc(String(preview[mapped]||'').substring(0,32)):`<span style="opacity:.4">—</span>`;
+    return `<tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:7px 12px;font-size:12px;font-weight:${f.required?'700':'500'};color:${f.required?'var(--text)':'var(--text-muted)'};white-space:nowrap;">${esc(f.label)}${f.required?' <span style="color:#f87171">*</span>':''}</td>
+      <td style="padding:4px 8px;min-width:200px;">${selHtml}</td>
+      <td style="padding:7px 12px;font-size:11px;color:var(--text-muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" class="preview-cell-${f.key}">${pv}</td>
+    </tr>`;
+  }).join('');
+
+  const autoCount=Object.keys(mapping).length;
+  document.getElementById('col-mapper-body').innerHTML=`
+    <div style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap;">
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 16px;font-size:13px;">
+        📄 <strong>${rows.length}</strong> rows detected
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 16px;font-size:13px;">
+        🗂 <strong>${headers.length}</strong> columns found
+      </div>
+      <div style="background:rgba(79,124,255,.12);border:1px solid rgba(79,124,255,.3);border-radius:8px;padding:10px 16px;font-size:13px;color:var(--accent);">
+        ✨ <strong>${autoCount}</strong> auto-mapped
+      </div>
+    </div>
+    <p style="color:var(--text-muted);font-size:12px;margin-bottom:14px;">Review and adjust the column mapping below. Fields marked <span style="color:#f87171">*</span> are required.</p>
+    <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+      <table style="width:100%;border-collapse:collapse;background:var(--surface);">
+        <thead style="background:var(--surface2);">
+          <tr>
+            <th style="padding:9px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Dashboard Field</th>
+            <th style="padding:9px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Your File Column</th>
+            <th style="padding:9px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Preview (row 1)</th>
+          </tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </div>`;
+
+  // Wire live preview updates
+  IMPORT_FIELDS.forEach(f=>{
+    const sel=document.getElementById('map-'+f.key);
+    if(!sel) return;
+    sel.addEventListener('change',()=>{
+      const col=sel.value;
+      const cell=document.querySelector('.preview-cell-'+f.key);
+      if(cell) cell.innerHTML=col?esc(String(preview[col]||'').substring(0,32)):`<span style="opacity:.4">—</span>`;
+    });
+  });
+
+  document.getElementById('col-mapper-modal').classList.remove('hidden');
+}
+
+function matchStage(str){
+  if(!str) return 'possible';
+  const s=str.toLowerCase().trim().replace(/\s+/g,'_');
+  if(STAGE_MAP[s]) return s;
+  const found=STAGES.find(st=>st.label.toLowerCase()===str.toLowerCase().trim());
+  if(found) return found.id;
+  return 'possible';
+}
+
+async function executeImportWithMapping(){
+  if(!_pendingImport) return;
+  const {rows}=_pendingImport;
+  const mapping={};
+  IMPORT_FIELDS.forEach(f=>{ const s=document.getElementById('map-'+f.key); if(s&&s.value) mapping[f.key]=s.value; });
+  if(!mapping.address){ alert('Address column is required'); return; }
+  closeModal('col-mapper-modal');
+  _pendingImport=null;
+  const batch=db.batch(); let added=0,updated=0;
+  for(const row of rows){
+    const addr=(row[mapping.address]||'').trim();
+    if(!addr) continue;
+    const d={
+      address:           addr,
+      city:              (row[mapping.city]||'').trim(),
+      state:             (row[mapping.state]||'').trim().toUpperCase().substring(0,2),
+      price:             parseFloat(row[mapping.price])||null,
+      size:              (row[mapping.size]||'').trim(),
+      parkingStalls:     parseInt(row[mapping.parkingStalls])||null,
+      zoning:            (row[mapping.zoning]||'').trim(),
+      stage:             matchStage(row[mapping.stage]),
+      listingBroker:     (row[mapping.listingBroker]||'').trim(),
+      brokerPhone:       (row[mapping.brokerPhone]||'').trim(),
+      offeredTerms:      (row[mapping.offeredTerms]||'').trim(),
+      dueDiligenceDate:  (row[mapping.dueDiligenceDate]||'').trim(),
+      closingTargetDate: (row[mapping.closingTargetDate]||'').trim(),
+      feedbackSummary:   (row[mapping.feedbackSummary]||'').trim(),
+      stallsNeeded:      parseInt(row[mapping.stallsNeeded])||null,
+      notes:             (row[mapping.notes]||'').trim(),
+      publicVisible:     mapping.publicVisible ? (row[mapping.publicVisible]||'').toLowerCase()!=='false' : true,
+      updatedAt:         firebase.firestore.FieldValue.serverTimestamp()
+    };
+    const existId=Object.keys(allProperties).find(id=>
+      (allProperties[id].address||'').toLowerCase()===addr.toLowerCase()
+    );
+    if(existId){ batch.update(db.collection('properties').doc(existId),d); updated++; }
+    else{ d.createdAt=firebase.firestore.FieldValue.serverTimestamp(); batch.set(db.collection('properties').doc(),d); added++; }
+  }
+  await batch.commit();
+  toast('📥','Import complete',`${added} added · ${updated} updated`);
+}
+
+document.getElementById('btn-confirm-import').addEventListener('click', executeImportWithMapping);
+
+async function handleImportFile(file){
+  const data = await parseImportFile(file);
+  if(!data||!data.rows.length){ toast('❌','Import failed','No data found in file'); return; }
+  showColumnMapper(data.headers, data.rows);
+}
+
+['pub','admin'].forEach(pfx=>{
+  document.getElementById(pfx+'-export-btn').addEventListener('click',()=>dlCSV(propsToCSV(),'rocwell-properties.csv'));
+  const fi=document.getElementById(pfx+'-import-file');
+  document.getElementById(pfx+'-import-btn').addEventListener('click',()=>fi.click());
+  fi.addEventListener('change',e=>{ if(e.target.files[0]){ handleImportFile(e.target.files[0]); e.target.value=''; } });
+});
+
+// ── MODALS UTILITY ───────────────────────────────────────────
+function closeModal(id){ document.getElementById(id).classList.add('hidden'); }
+document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>closeModal(b.dataset.close)));
+document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{ if(e.target===o) closeModal(o.id); }));
+
+// ── TOAST ─────────────────────────────────────────────────────
+function toast(icon,title,body='',dur=4000){
+  const c=document.getElementById('toast-container');
+  const el=document.createElement('div'); el.className='toast';
+  el.innerHTML=`<div class="toast-icon">${icon}</div><div><div class="toast-title">${esc(title)}</div><div class="toast-body">${esc(body)}</div></div>`;
+  c.appendChild(el);
+  setTimeout(()=>{ el.classList.add('removing'); el.addEventListener('animationend',()=>el.remove()); },dur);
+}
+
+// ── UTILS ────────────────────────────────────────────────────
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+</script>
+
+<!--
+=============================================================
+FIRESTORE SECURITY RULES (apply in Firebase Console)
+=============================================================
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /properties/{propId} {
+      allow read: if true;
+      allow create, delete: if request.auth != null;
+      allow update: if request.auth != null ||
+        request.resource.data.diff(resource.data)
+          .affectedKeys().hasOnly(['feedbackSummary','stallsNeeded','updatedAt']);
+    }
+    match /tasks/{taskId} {
+      allow read, write: if request.auth != null;
+      allow create: if true;
+    }
+    match /settings/{settingDoc} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+=============================================================
+-->
+</body>
+</html>
