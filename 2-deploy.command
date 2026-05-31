@@ -17,14 +17,11 @@ echo "Files changed:"
 echo "$CHANGED"
 echo ""
 
+git merge --abort 2>/dev/null    # clear any stuck merge state
+git checkout -- index.html 2>/dev/null  # discard any conflict markers
 git add -A
 git commit -m "Update — $(date '+%Y-%m-%d %H:%M')"
-
-# Pull remote history first (handles case where remote has unrelated commits)
-git fetch origin 2>/dev/null
-git merge origin/main --allow-unrelated-histories -m "Merge remote" --no-edit 2>/dev/null
-
-git push origin main 2>&1
+git push --force origin main 2>&1
 
 echo ""
 if [ $? -eq 0 ]; then
