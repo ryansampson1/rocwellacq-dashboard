@@ -16,13 +16,22 @@
   --radius:10px; --shadow:0 4px 24px rgba(0,0,0,.4);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-html,body{height:100%;font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;}
+html,body{height:100%;font-family:'Inter',system-ui,sans-serif;color:var(--text);font-size:14px;}
+body{
+  background:
+    linear-gradient(rgba(0,0,0,.18) 0%,rgba(0,0,0,0) 12%,rgba(0,0,0,0) 88%,rgba(0,0,0,.12) 100%),
+    linear-gradient(135deg,rgba(255,248,185,.68) 0%,rgba(210,162,28,.62) 45%,rgba(255,235,120,.68) 100%),
+    url('https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Tesla_Cybercab_at_We_Robot_Event.jpg/1280px-Tesla_Cybercab_at_We_Robot_Event.jpg')
+    center 32%/cover no-repeat fixed;
+  background-color:#c8a020;
+}
 button{cursor:pointer;font-family:inherit;font-size:13px;}
 input,select,textarea{font-family:inherit;font-size:13px;}
 a{color:var(--accent);text-decoration:none;}
 ::-webkit-scrollbar{width:6px;height:6px;}
-::-webkit-scrollbar-track{background:var(--surface);}
-::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+::-webkit-scrollbar-track{background:rgba(200,155,20,.2);}
+::-webkit-scrollbar-thumb{background:rgba(200,155,20,.5);border-radius:3px;}
+::-webkit-scrollbar-thumb:hover{background:rgba(200,155,20,.8);}
 
 #view-loading{display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:16px;}
 .spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;}
