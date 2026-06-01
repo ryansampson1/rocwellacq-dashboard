@@ -592,6 +592,9 @@ td.editable input{background:var(--bg);border:1px solid var(--accent);border-rad
           <div class="form-group"><label class="form-label">County</label><input type="text" id="prop-county" class="form-control" placeholder="Hillsborough"></div>
         </div>
         <div class="form-row">
+          <div class="form-group"><label class="form-label">Parcel ID / Folio #</label><input type="text" id="prop-parcel-id" class="form-control" placeholder="e.g. 16-29-16-00000-140-0100"></div>
+        </div>
+        <div class="form-row">
           <div class="form-group"><label class="form-label">Effective Date</label><input type="date" id="prop-effective-date" class="form-control"></div>
           <div class="form-group"><label class="form-label">Deposit Amount ($)</label><input type="number" id="prop-deposit-amount" class="form-control" placeholder="e.g. 10000" min="0"></div>
         </div>
@@ -2088,7 +2091,7 @@ function openPropertyModal(id=null){
   set('prop-closing-date',p?.closingTargetDate); set('prop-seller',p?.sellerName);
   set('prop-effective-date',p?.effectiveDate); set('prop-deposit-amount',p?.depositAmount);
   set('prop-escrow-agent',p?.escrowAgentName); set('prop-escrow-phone',p?.escrowAgentPhone);
-  set('prop-county',p?.county); set('prop-legal-desc',p?.legalDesc);
+  set('prop-county',p?.county); set('prop-parcel-id',p?.parcelId); set('prop-legal-desc',p?.legalDesc);
   set('prop-sec',p?.secVal); set('prop-twp',p?.twpVal); set('prop-rng',p?.rngVal);
   set('prop-power-company',p?.powerCompany);
   set('prop-listing-url',p?.listingUrl);
@@ -2542,7 +2545,7 @@ async function extractPdfText(b64){
 async function callClaude(b64,mediaType){
   const key=(anthropicApiKey||'').trim();
   if(!key) throw new Error('No API key. Set it in Settings → AI Document Reading.');
-  const prompt='Extract property and PSA/contract info. Return ONLY valid JSON: {"address":"street only","city":"","state":"2-letter or null","price":numberOrNull,"size":"acreage string or null","parkingStalls":numberOrNull,"zoning":"or null","sellerName":"or null","county":"or null","legalDesc":"or null","effectiveDate":"YYYY-MM-DD or null","depositAmount":numberOrNull,"escrowAgentName":"title company or escrow agent name or null","escrowAgentPhone":"or null","dueDiligenceDate":"YYYY-MM-DD expiration of due diligence period or null","closingDate":"YYYY-MM-DD or null"}. For PSA documents: look for Effective Date, Due Diligence Period expiration, Closing Date, Escrow Agent, and Deposit/Earnest Money amount. Null for not found.';
+  const prompt='Extract property and PSA/contract info. Return ONLY valid JSON: {"address":"street only","city":"","state":"2-letter or null","price":numberOrNull,"size":"acreage string or null","parkingStalls":numberOrNull,"zoning":"or null","sellerName":"or null","county":"county name only e.g. Pinellas or null","legalDesc":"or null","effectiveDate":"YYYY-MM-DD or null","depositAmount":numberOrNull,"escrowAgentName":"title company or escrow agent name or null","escrowAgentPhone":"or null","dueDiligenceDate":"YYYY-MM-DD expiration of due diligence period or null","closingDate":"YYYY-MM-DD or null","listingBroker":"listing broker or agent full name or null","brokerPhone":"broker or agent phone number or null","parcelId":"parcel ID / folio number / APN / account number — look for Parcel, Folio, APN, Parcel ID fields or null","powerCompany":"electric utility provider name or null"}. For PSA documents: look for Effective Date, Due Diligence Period expiration, Closing Date, Escrow Agent, Deposit/Earnest Money, Listing Broker, and Parcel/Folio number. Null for not found.';
   let content;
   if(mediaType==='application/pdf'){
     // Extract text locally via pdf.js — avoids beta header CORS issues
@@ -2622,6 +2625,10 @@ async function readDocAndFill(propId, file){
       ['escrowAgentPhone',result.escrowAgentPhone,null],
       ['dueDiligenceDate',result.dueDiligenceDate,null],
       ['closingTargetDate',result.closingDate,null],
+      ['listingBroker',result.listingBroker,null],
+      ['brokerPhone',result.brokerPhone,null],
+      ['parcelId',result.parcelId,null],
+      ['powerCompany',result.powerCompany,null],
     ];
     const updates={};
     let filled=0;
@@ -2651,7 +2658,103 @@ async function readDocAndFill(propId, file){
     } else {
       toast('ℹ️','No new data found','All existing fields kept as-is');
     }
+    // If parcel ID still missing and we have enough address info, try PA website lookup
+    const fresh = allProperties[propId];
+    if(!fresh?.parcelId && fresh?.address && (fresh?.county || fresh?.city)) {
+      lookupParcelFromPA(propId);
+    }
   }catch(err){ toast('⚠️','Could not read doc',err.message); }
+}
+
+// ── PARCEL LOOKUP VIA COUNTY PROPERTY APPRAISER ──────────────
+const FL_PA_SEARCH = {
+  'pinellas':     addr => `https://www.pcpao.gov/search/results?propertyAddress=${encodeURIComponent(addr)}&pageSize=5`,
+  'hillsborough': addr => `https://gis.hcpafl.org/propertysearch/#!map/${encodeURIComponent(addr)}`,
+  'pasco':        addr => `https://www.pascopa.com/search?q=${encodeURIComponent(addr)}`,
+  'manatee':      addr => `https://www.manateepa.com/MapSearch.aspx?SearchType=address&SearchValue=${encodeURIComponent(addr)}`,
+  'sarasota':     addr => `https://www.sc-pa.com/search?q=${encodeURIComponent(addr)}`,
+  'brevard':      addr => `https://www.bcpao.us/api/search/address?address=${encodeURIComponent(addr)}&size=5&fields=parcel,address,owner`,
+  'orange':       addr => `https://www.ocpafl.org/search?addr=${encodeURIComponent(addr)}`,
+  'osceola':      addr => `https://www.property.osceola.org/CamaDisplay.aspx?OutputMode=InitialInput&SearchType=PropertyAddress&PropertyAddress=${encodeURIComponent(addr)}`,
+  'polk':         addr => `https://www.polkpa.org/CamaDisplay.aspx?OutputMode=InitialInput&SearchType=PropertyAddress&PropertyAddress=${encodeURIComponent(addr)}`,
+  'lee':          addr => `https://www.leepa.org/Search/SearchResult.aspx?searchType=address&searchValue=${encodeURIComponent(addr)}`,
+  'collier':      addr => `https://www.collierappraiser.com/search/commonsearch.aspx?mode=address&searchValue=${encodeURIComponent(addr)}`,
+  'alachua':      addr => `https://www.acpafl.org/search?address=${encodeURIComponent(addr)}`,
+  'duval':        addr => `https://paopropertysearch.coj.net/Basic/Detail.aspx?Address=${encodeURIComponent(addr)}`,
+  'volusia':      addr => `https://vcpa.vcgov.org/search?addr=${encodeURIComponent(addr)}`,
+  'seminole':     addr => `https://www.scpafl.org/BasicSearch.aspx?address=${encodeURIComponent(addr)}`,
+};
+
+async function lookupParcelFromPA(propId){
+  const prop = allProperties[propId];
+  if(!prop || !anthropicApiKey) return;
+
+  const county = (prop.county||'').toLowerCase().replace(/\s+county$/,'').trim();
+  const searchFn = FL_PA_SEARCH[county];
+  if(!searchFn){
+    // County not in our map — ask Claude to determine county then retry
+    if(prop.city && prop.state==='FL'){
+      try{
+        const resp = await fetch('https://api.anthropic.com/v1/messages',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','x-api-key':anthropicApiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+          body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:80,messages:[{role:'user',content:`What Florida county is ${prop.city}, FL in? Reply with ONLY valid JSON: {"county":"CountyName"}`}]})
+        });
+        if(resp.ok){
+          const d=await resp.json();
+          const m=d.content[0].text.match(/\{[\s\S]*\}/);
+          if(m){
+            const det=JSON.parse(m[0]);
+            if(det.county){
+              const detNorm=det.county.toLowerCase().replace(/\s+county$/,'').trim();
+              if(!prop.county){
+                await db.collection('properties').doc(propId).update({county:det.county,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+                if(allProperties[propId]) allProperties[propId].county=det.county;
+              }
+              const detFn=FL_PA_SEARCH[detNorm];
+              if(detFn) await _fetchAndParseParcel(propId, detFn, prop);
+            }
+          }
+        }
+      }catch(e){ console.warn('County detect failed:',e); }
+    }
+    return;
+  }
+  await _fetchAndParseParcel(propId, searchFn, prop);
+}
+
+async function _fetchAndParseParcel(propId, searchFn, prop){
+  try{
+    toast('🔍','Looking up parcel…','Searching county property appraiser');
+    const url = searchFn(prop.address + (prop.city?', '+prop.city:''));
+    const proxyUrl = 'https://corsproxy.io/?'+encodeURIComponent(url);
+    const r = await fetch(proxyUrl,{signal:AbortSignal.timeout(10000)});
+    if(!r.ok) return;
+    const text = await r.text();
+    // Use Claude to extract parcel ID from the PA response
+    const parsePrompt = `This is the response from a Florida county property appraiser website search for the property at "${prop.address}${prop.city?', '+prop.city:''}". Extract the parcel ID (also called folio number, APN, account number, or parcel number). Return ONLY valid JSON: {"parcelId":"XX-XX-XX-XXXXX or null","county":"county name or null"}. Return null if not clearly found.`;
+    const resp2 = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':anthropicApiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:120,messages:[{role:'user',content:[{type:'text',text:`${parsePrompt}\n\nSearch response (first 5000 chars):\n${text.substring(0,5000)}`}]}]})
+    });
+    if(!resp2.ok) return;
+    const d2=await resp2.json();
+    const m=d2.content[0].text.match(/\{[\s\S]*\}/);
+    if(!m) return;
+    const parsed=JSON.parse(m[0]);
+    const updates={updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+    if(parsed.parcelId) updates.parcelId=parsed.parcelId;
+    if(parsed.county && !prop.county) updates.county=parsed.county;
+    if(Object.keys(updates).length>1){
+      await db.collection('properties').doc(propId).update(updates);
+      Object.assign(allProperties[propId]||{},updates);
+      renderKanban(); renderAdminTable();
+      if(parsed.parcelId) toast('🏛️','Parcel ID found',parsed.parcelId);
+    } else {
+      toast('ℹ️','Parcel not found','Check county property appraiser manually');
+    }
+  }catch(e){ console.warn('PA lookup failed:',e); }
 }
 
 document.getElementById('btn-add-property').addEventListener('click',()=>openPropertyModal());
@@ -2687,6 +2790,7 @@ document.getElementById('btn-save-property').addEventListener('click', async ()=
     closingTargetDate:document.getElementById('prop-closing-date').value,
     sellerName:document.getElementById('prop-seller').value.trim(),
     county:document.getElementById('prop-county').value.trim(),
+    parcelId:document.getElementById('prop-parcel-id')?.value.trim()||null,
     effectiveDate:document.getElementById('prop-effective-date')?.value||null,
     depositAmount:parseFloat(document.getElementById('prop-deposit-amount')?.value)||null,
     escrowAgentName:document.getElementById('prop-escrow-agent')?.value.trim()||null,
