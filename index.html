@@ -233,6 +233,13 @@ td.editable input{background:var(--bg);border:1px solid var(--accent);border-rad
 
 #card-detail-panel{pointer-events:none;}
 #card-detail-panel.open{transform:translateX(0);pointer-events:all;}
+#tasks-panel{pointer-events:none;}
+#tasks-panel.open{pointer-events:all;}
+.cdp-log-row{display:flex;gap:6px;align-items:flex-start;}
+.cdp-log-type{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 8px;color:var(--text);font-size:12px;outline:none;flex-shrink:0;}
+.cdp-log-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 9px;color:var(--text);font-size:12px;outline:none;resize:none;}
+.cdp-log-input:focus,.cdp-log-type:focus{border-color:var(--accent);}
+.cdp-activity-icon{font-size:14px;flex-shrink:0;width:20px;text-align:center;}
 .cdp-field{background:var(--bg);border-radius:6px;padding:7px 10px;}
 .cdp-field-label{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px;}
 .cdp-field-val{font-weight:600;color:var(--text);font-size:13px;}
@@ -437,13 +444,13 @@ td.editable input{background:var(--bg);border:1px solid var(--accent);border-rad
 </div>
 
 <!-- Card Detail Panel -->
-<div id="card-detail-panel" style="position:fixed;right:0;top:0;bottom:0;width:400px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;z-index:201;transform:translateX(100%);transition:transform .25s ease;box-shadow:-4px 0 24px rgba(0,0,0,.4);">
+<div id="card-detail-panel" style="position:fixed;right:0;top:0;bottom:0;width:420px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;z-index:201;transform:translateX(100%);transition:transform .25s ease;box-shadow:-4px 0 24px rgba(0,0,0,.4);">
   <div class="panel-header">
-    <div>
-      <h3 id="cdp-title" style="font-size:15px;font-weight:700;"></h3>
+    <div style="min-width:0;">
+      <h3 id="cdp-title" style="font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></h3>
       <div id="cdp-meta" style="font-size:12px;color:var(--text-muted);margin-top:2px;"></div>
     </div>
-    <div style="display:flex;gap:8px;align-items:center;">
+    <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
       <button class="btn btn-secondary btn-sm" id="cdp-edit-btn">✏️ Edit</button>
       <button class="panel-close" id="cdp-close-btn">×</button>
     </div>
@@ -456,10 +463,26 @@ td.editable input{background:var(--bg);border:1px solid var(--accent);border-rad
       <div id="cdp-fields" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;"></div>
     </div>
 
-    <!-- Notes -->
+    <!-- Log Activity -->
     <div>
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:8px;">Notes <span id="cdp-notes-saving" style="font-weight:400;color:var(--text-muted);font-size:10px;"></span></div>
-      <textarea id="cdp-notes" class="form-control" rows="5" placeholder="Add notes…" style="font-size:12px;resize:vertical;"></textarea>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:8px;">Log Activity</div>
+      <div class="cdp-log-row" style="margin-bottom:6px;">
+        <select id="cdp-log-type" class="cdp-log-type">
+          <option value="note">📝 Note</option>
+          <option value="call">📞 Call</option>
+          <option value="meeting">🤝 Meeting</option>
+          <option value="email">✉️ Email</option>
+          <option value="task">☑️ Task</option>
+        </select>
+        <textarea id="cdp-log-text" class="cdp-log-input" rows="2" placeholder="Add details…"></textarea>
+      </div>
+      <button class="btn btn-primary btn-sm" id="cdp-log-submit" style="width:100%;">+ Log Entry</button>
+    </div>
+
+    <!-- Activity Feed (auto + manual, admin-only) -->
+    <div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:8px;">Activity <span style="font-weight:400;font-style:italic;">(internal only)</span></div>
+      <div id="cdp-activity" style="display:flex;flex-direction:column;"></div>
     </div>
 
     <!-- Documents -->
@@ -472,10 +495,13 @@ td.editable input{background:var(--bg);border:1px solid var(--accent);border-rad
       </label>
     </div>
 
-    <!-- Activity Log -->
+    <!-- Private Notes scratchpad -->
     <div>
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:8px;">Activity Log</div>
-      <div id="cdp-activity" style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--text-muted);"></div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:8px;">
+        Private Notes <span id="cdp-notes-saving" style="font-weight:400;color:var(--text-muted);font-size:10px;"></span>
+        <span style="font-weight:400;font-style:italic;">(internal only)</span>
+      </div>
+      <textarea id="cdp-notes" class="form-control" rows="4" placeholder="Quick scratchpad — never shown publicly…" style="font-size:12px;resize:vertical;"></textarea>
     </div>
 
   </div>
@@ -1193,6 +1219,25 @@ async function findAndMergeDuplicates(){
     groups[key].push(p);
   });
 
+  // Second pass: fuzzy-merge groups whose normalized addresses are close matches.
+  // Rules: street number (first numeric token) must match exactly + Jaccard ≥ 0.75.
+  const groupKeys = Object.keys(groups);
+  const absorbed = new Set();
+  for(let i=0;i<groupKeys.length;i++){
+    if(absorbed.has(groupKeys[i])) continue;
+    for(let j=i+1;j<groupKeys.length;j++){
+      if(absorbed.has(groupKeys[j])) continue;
+      const numA = groupKeys[i].match(/\d+/)?.[0];
+      const numB = groupKeys[j].match(/\d+/)?.[0];
+      if(!numA||!numB||numA!==numB) continue; // street numbers must match
+      if(_addrSimilarity(groupKeys[i],groupKeys[j])>=0.75){
+        groups[groupKeys[i]] = [...groups[groupKeys[i]], ...groups[groupKeys[j]]];
+        absorbed.add(groupKeys[j]);
+      }
+    }
+  }
+  absorbed.forEach(k=>delete groups[k]);
+
   // Keep only groups with more than one property
   const dupeGroups = Object.values(groups).filter(g=>g.length>1);
   if(!dupeGroups.length) return 0;
@@ -1617,9 +1662,10 @@ function buildCard(prop){
   }
 
   const docs = prop.documents||[];
-  const docChips = docs.slice(0,3).map(d=>
-    `<a href="${d.url}" target="_blank" rel="noopener" class="card-doc-chip" title="${esc(d.name)}" onclick="event.stopPropagation()">📄 ${esc(d.name.length>16?d.name.substring(0,16)+'…':d.name)}</a>`
-  ).join('');
+  const docChips = docs.slice(0,3).map(d=>{
+    const nm=d.name||'document';
+    return `<a href="${d.url}" target="_blank" rel="noopener" class="card-doc-chip" title="${esc(nm)}" onclick="event.stopPropagation()">📄 ${esc(nm.length>16?nm.substring(0,16)+'…':nm)}</a>`;
+  }).join('');
   const moreChip = docs.length>3?`<span class="card-doc-more">+${docs.length-3} more</span>`:'';
 
   card.innerHTML=`
@@ -1649,9 +1695,16 @@ function buildCard(prop){
 
   card.addEventListener('dragstart',onDragStart);
   card.addEventListener('dragend',onDragEnd);
-  card.addEventListener('click', e=>{
+  // Use mousedown+mouseup instead of click — draggable elements suppress click events in some browsers
+  let _mdTime=0;
+  card.addEventListener('mousedown', e=>{
     if(e.target.closest('.card-menu-btn,.card-del-btn,.card-upload-btn,.card-file-input,.card-doc-chip')) return;
-    openCardPanel(prop.id);
+    _mdTime=Date.now();
+  });
+  card.addEventListener('mouseup', e=>{
+    if(e.target.closest('.card-menu-btn,.card-del-btn,.card-upload-btn,.card-file-input,.card-doc-chip')) return;
+    if(_mdTime && Date.now()-_mdTime < 300 && !draggingId) openCardPanel(prop.id);
+    _mdTime=0;
   });
   card.querySelector('.card-menu-btn').addEventListener('click',e=>{e.stopPropagation();openPropertyModal(prop.id);});
   card.querySelector('.card-del-btn').addEventListener('click',e=>{e.stopPropagation();deleteProperty(prop.id);});
@@ -1760,7 +1813,7 @@ function renderAdminTable(){
     const lps  = rent&&p.stallsNeeded     ? Math.round(rent/p.stallsNeeded)     : null;
     const fbOpt= FB_MAP[p.feedbackSummary||''];
     const fbChip= fbOpt&&fbOpt.chip?`<span class="fb-chip ${fbOpt.chip}">${fbOpt.label}</span>`:`<span style="color:var(--text-muted)">—</span>`;
-    return `<tr>
+    return `<tr data-propid="${p.id}" style="cursor:pointer;" title="Click to open property panel">
       <td class="editable" data-id="${p.id}" data-field="address">${esc(p.address||'')}</td>
       <td class="editable" data-id="${p.id}" data-field="city">${esc(p.city||'')}</td>
       <td class="editable" data-id="${p.id}" data-field="state">${esc(p.state||'')}</td>
@@ -1808,8 +1861,17 @@ function renderAdminTable(){
       inp.addEventListener('keydown',e=>{if(e.key==='Enter')inp.blur();if(e.key==='Escape')renderAdminTable();});
     });
   });
-  tbody.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click',()=>openPropertyModal(b.dataset.edit)));
-  tbody.querySelectorAll('[data-delete]').forEach(b=>b.addEventListener('click',()=>deleteProperty(b.dataset.delete)));
+  tbody.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();openPropertyModal(b.dataset.edit);}));
+  tbody.querySelectorAll('[data-delete]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();deleteProperty(b.dataset.delete);}));
+  // Row click → open card detail panel
+  tbody.querySelectorAll('tr[data-propid]').forEach(tr=>{
+    tr.addEventListener('mousedown', e=>{ tr._mdT=Date.now(); });
+    tr.addEventListener('mouseup', e=>{
+      if(!tr._mdT || Date.now()-tr._mdT>300) return;
+      if(e.target.closest('button,select,input,.editable')) return;
+      openCardPanel(tr.dataset.propid);
+    });
+  });
 }
 document.getElementById('admin-search')?.addEventListener('input',renderAdminTable);
 document.getElementById('admin-stage-filter')?.addEventListener('change',renderAdminTable);
@@ -3257,6 +3319,7 @@ function matchStage(str){
 function _normalizeAddr(a){
   return (a||'').toLowerCase().trim()
     .replace(/[.,#]/g,'')
+    .replace(/-/g,' ')                          // 1505-507 → 1505 507
     .replace(/\bstreet\b/g,'st').replace(/\bavenue\b/g,'ave').replace(/\bboulevard\b/g,'blvd')
     .replace(/\bdrive\b/g,'dr').replace(/\broad\b/g,'rd').replace(/\blane\b/g,'ln')
     .replace(/\bcourt\b/g,'ct').replace(/\bcircle\b/g,'cir').replace(/\bplace\b/g,'pl')
@@ -3266,6 +3329,15 @@ function _normalizeAddr(a){
     .replace(/\bsoutheast\b/g,'se').replace(/\bsouthwest\b/g,'sw')
     .replace(/\bnorth\b/g,'n').replace(/\bsouth\b/g,'s').replace(/\beast\b/g,'e').replace(/\bwest\b/g,'w')
     .replace(/\s+/g,' ').trim();
+}
+
+// Jaccard token similarity — returns 0–1
+function _addrSimilarity(normA, normB){
+  const tokA = new Set(normA.split(' '));
+  const tokB = new Set(normB.split(' '));
+  const intersection = [...tokA].filter(t=>tokB.has(t)).length;
+  const union = new Set([...tokA,...tokB]).size;
+  return union===0 ? 0 : intersection/union;
 }
 
 async function executeImportWithMapping(){
@@ -3499,8 +3571,9 @@ function _addMapLegend(mapInstance){
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 // ── HISTORY LOGGING ──────────────────────────────────────────
-async function logHistory(propId, text, color=null){
-  const entry = { text, ts: new Date().toISOString(), ...(color?{color}:{}) };
+async function logHistory(propId, text, color=null, type='system', icon=null){
+  const entry = { text, ts: new Date().toISOString(), type: type||'system',
+    ...(color?{color}:{}), ...(icon?{icon}:{}) };
   try{
     await db.collection('properties').doc(propId).update({
       history: firebase.firestore.FieldValue.arrayUnion(entry),
@@ -3513,6 +3586,14 @@ async function logHistory(propId, text, color=null){
 }
 
 // ── CARD DETAIL PANEL ────────────────────────────────────────
+const ACTIVITY_TYPES = {
+  note:    { icon:'📝', label:'Note',    color:null },
+  call:    { icon:'📞', label:'Call',    color:'#4ade80' },
+  meeting: { icon:'🤝', label:'Meeting', color:'#a78bfa' },
+  email:   { icon:'✉️', label:'Email',   color:'#60a5fa' },
+  task:    { icon:'☑️', label:'Task',    color:'#fbbf24' },
+};
+
 let _cdpPropId = null;
 let _cdpNotesTimer = null;
 
@@ -3524,7 +3605,10 @@ function openCardPanel(propId){
 
   // Header
   document.getElementById('cdp-title').textContent = p.address || 'Property';
-  document.getElementById('cdp-meta').textContent = [p.city, p.state].filter(Boolean).join(', ') + (p.zoning ? ' · ' + p.zoning : '');
+  document.getElementById('cdp-meta').textContent =
+    [p.city, p.state].filter(Boolean).join(', ') +
+    (p.stage ? ' · ' + (STAGE_MAP[p.stage]?.label||p.stage) : '') +
+    (p.zoning ? ' · ' + p.zoning : '');
   document.getElementById('cdp-edit-btn').onclick = () => { closeCardPanel(); openPropertyModal(propId); };
 
   // Key fields
@@ -3537,15 +3621,43 @@ function openCardPanel(propId){
     ['Power Co', p.powerCompany || null],
     ['Broker', p.listingBroker || null],
     ['Broker Ph', p.brokerPhone || null],
+    ['Seller', p.sellerName || null],
     ['DD Date', p.dueDiligenceDate || null],
     ['Close Date', p.closingTargetDate || null],
+    ['Deposit', p.depositAmount ? '$'+Number(p.depositAmount).toLocaleString() : null],
   ].filter(([,v]) => v);
-  const fieldsEl = document.getElementById('cdp-fields');
-  fieldsEl.innerHTML = fields.length
+  document.getElementById('cdp-fields').innerHTML = fields.length
     ? fields.map(([l,v]) => `<div class="cdp-field"><div class="cdp-field-label">${esc(l)}</div><div class="cdp-field-val">${esc(String(v))}</div></div>`).join('')
-    : '<div style="color:var(--text-muted);font-size:12px;">No fields set yet — click Edit to add details.</div>';
+    : '<div style="color:var(--text-muted);font-size:12px;">No fields set — click Edit.</div>';
 
-  // Notes — live autosave
+  // Activity logger
+  const logText = document.getElementById('cdp-log-text');
+  const logType = document.getElementById('cdp-log-type');
+  logText.value = '';
+  document.getElementById('cdp-log-submit').onclick = async () => {
+    const text = logText.value.trim();
+    if(!text) return;
+    const type = logType.value;
+    const at = ACTIVITY_TYPES[type];
+    await logHistory(propId, text, at.color, type, at.icon);
+    logText.value = '';
+    renderCdpActivity(allProperties[propId]);
+  };
+  logText.onkeydown = e => { if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)) document.getElementById('cdp-log-submit').click(); };
+
+  // Activity feed
+  renderCdpActivity(p);
+
+  // Documents
+  renderCdpDocs(propId);
+  document.getElementById('cdp-doc-input').onchange = async e => {
+    const file = e.target.files[0]; if(!file) return;
+    e.target.value = '';
+    await uploadPropertyDoc(propId, file);
+    renderCdpDocs(propId);
+  };
+
+  // Private notes autosave
   const notesEl = document.getElementById('cdp-notes');
   notesEl.value = p.notes || '';
   notesEl.oninput = () => {
@@ -3554,24 +3666,9 @@ function openCardPanel(propId){
     clearTimeout(_cdpNotesTimer);
     _cdpNotesTimer = setTimeout(async () => {
       await savePropField(propId, 'notes', notesEl.value.trim());
-      if(savingEl) { savingEl.textContent = '✓ saved'; setTimeout(()=>{ if(savingEl) savingEl.textContent=''; }, 2000); }
+      if(savingEl){ savingEl.textContent='✓ saved'; setTimeout(()=>{ if(savingEl) savingEl.textContent=''; },2000); }
     }, 800);
   };
-
-  // Documents
-  renderCdpDocs(propId);
-
-  // Doc upload
-  const docInput = document.getElementById('cdp-doc-input');
-  docInput.onchange = async e => {
-    const file = e.target.files[0]; if(!file) return;
-    e.target.value = '';
-    await uploadPropertyDoc(propId, file);
-    renderCdpDocs(propId);
-  };
-
-  // Activity log
-  renderCdpActivity(p);
 
   panel.classList.add('open');
 }
@@ -3589,37 +3686,44 @@ function renderCdpActivity(p){
   const el = document.getElementById('cdp-activity');
   const items = [];
 
-  // Seed events from property timestamps
-  if(p.createdAt) items.push({ date: p.createdAt.toDate?.() || new Date(p.createdAt), text: 'Property added' });
-  if(p.deadAt)    items.push({ date: p.deadAt.toDate?.()   || new Date(p.deadAt),   text: 'Marked as Dead', color:'#f87171' });
+  // Seed from timestamps
+  if(p.createdAt) items.push({ date: p.createdAt.toDate?.() || new Date(p.createdAt), text:'Property added', icon:'🏠', type:'system' });
+  if(p.deadAt)    items.push({ date: p.deadAt.toDate?.()   || new Date(p.deadAt),   text:'Marked as Dead', icon:'☠', color:'#f87171', type:'system' });
 
-  // Rich history log entries (written by logHistory)
+  // History entries (auto-logged system events + manual user entries)
   (p.history||[]).forEach(h => {
-    const date = h.ts ? new Date(h.ts) : null;
-    items.push({ date, text: h.text, color: h.color||null });
+    items.push({
+      date:  h.ts ? new Date(h.ts) : null,
+      text:  h.text,
+      icon:  h.icon || (h.type && ACTIVITY_TYPES[h.type]?.icon) || '•',
+      color: h.color || null,
+      type:  h.type || 'system',
+    });
   });
-
-  // Fallback: if no history entries yet, show last-updated
-  if(!(p.history||[]).length && p.updatedAt && p.createdAt && p.updatedAt.seconds !== p.createdAt.seconds)
-    items.push({ date: p.updatedAt.toDate?.() || new Date(p.updatedAt), text: 'Last updated' });
 
   items.sort((a,b) => (b.date?.getTime()||0)-(a.date?.getTime()||0));
 
-  el.innerHTML = items.length
-    ? items.map(i => {
-        const dateStr = i.date
-          ? i.date.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
-            + ' ' + i.date.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})
-          : '';
-        return `<div class="cdp-activity-item">
-          <div class="cdp-activity-dot" style="${i.color?'background:'+i.color:''}"></div>
-          <div>
-            <div style="color:var(--text);font-size:12px;">${esc(i.text)}</div>
-            ${dateStr?`<div style="font-size:11px;color:var(--text-muted);">${esc(dateStr)}</div>`:''}
-          </div>
-        </div>`;
-      }).join('')
-    : '<div style="color:var(--text-muted);font-size:12px;">No activity yet</div>';
+  if(!items.length){
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px 0;">No activity yet. Use the logger above to add notes, calls, and meetings.</div>';
+    return;
+  }
+
+  el.innerHTML = items.map(i => {
+    const dateStr = i.date
+      ? i.date.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) + ' · '
+        + i.date.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})
+      : '';
+    const dot = i.color
+      ? `<div class="cdp-activity-dot" style="background:${i.color}"></div>`
+      : `<div class="cdp-activity-dot"></div>`;
+    return `<div class="cdp-activity-item">
+      <div class="cdp-activity-icon">${i.icon||'•'}</div>
+      <div style="min-width:0;flex:1;">
+        <div style="color:var(--text);font-size:12px;line-height:1.4;">${esc(i.text)}</div>
+        ${dateStr?`<div style="font-size:10px;color:var(--text-muted);margin-top:1px;">${esc(dateStr)}</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function closeCardPanel(){
