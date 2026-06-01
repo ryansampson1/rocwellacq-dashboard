@@ -136,6 +136,9 @@ table.data-table tbody tr:hover{background:var(--surface2);}
 .prop-card-meta{font-size:11px;color:var(--text-muted);margin-bottom:5px;}
 .prop-card .card-menu-btn{position:absolute;top:8px;right:8px;background:none;border:none;color:var(--text-muted);padding:2px 6px;border-radius:4px;opacity:0;transition:opacity .15s;}
 .prop-card:hover .card-menu-btn{opacity:1;}
+.card-del-btn{position:absolute;top:8px;right:30px;background:none;border:none;color:var(--text-muted);padding:2px 5px;border-radius:4px;opacity:0;transition:opacity .15s;font-size:12px;cursor:pointer;}
+.prop-card:hover .card-del-btn{opacity:1;}
+.card-del-btn:hover{color:#f87171;background:rgba(239,68,68,.1);}
 .card-info-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:5px;font-size:11px;color:var(--text-muted);}
 .ci-val{color:var(--text);font-weight:600;}
 .nnn-chip{background:rgba(79,124,255,.12);color:var(--accent);font-size:11px;font-weight:700;padding:2px 7px;border-radius:5px;}
@@ -228,6 +231,14 @@ td.editable input{background:var(--bg);border:1px solid var(--accent);border-rad
 .toast-body{color:var(--text-muted);font-size:12px;}
 .notif-badge{background:#ef4444;color:#fff;font-size:10px;font-weight:800;width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;}
 
+#card-detail-panel{pointer-events:none;}
+#card-detail-panel.open{transform:translateX(0);pointer-events:all;}
+.cdp-field{background:var(--bg);border-radius:6px;padding:7px 10px;}
+.cdp-field-label{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px;}
+.cdp-field-val{font-weight:600;color:var(--text);font-size:13px;}
+.cdp-activity-item{display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--border);}
+.cdp-activity-item:last-child{border-bottom:none;}
+.cdp-activity-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:3px;}
 @media(max-width:640px){.kanban-col{flex:0 0 220px;}#tasks-panel{width:100%;}.form-row{grid-template-columns:1fr;}}
 /* Leaflet popup dark theme */
 .leaflet-popup-content-wrapper{background:var(--surface)!important;color:var(--text)!important;border:1px solid var(--border)!important;box-shadow:0 4px 20px rgba(0,0,0,.5)!important;}
@@ -425,6 +436,51 @@ td.editable input{background:var(--bg);border:1px solid var(--accent);border-rad
   <div class="content" id="admin-settings-content" style="display:none;"><div id="settings-container" style="max-width:700px;"></div></div>
 </div>
 
+<!-- Card Detail Panel -->
+<div id="card-detail-panel" style="position:fixed;right:0;top:0;bottom:0;width:400px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;z-index:201;transform:translateX(100%);transition:transform .25s ease;box-shadow:-4px 0 24px rgba(0,0,0,.4);">
+  <div class="panel-header">
+    <div>
+      <h3 id="cdp-title" style="font-size:15px;font-weight:700;"></h3>
+      <div id="cdp-meta" style="font-size:12px;color:var(--text-muted);margin-top:2px;"></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="btn btn-secondary btn-sm" id="cdp-edit-btn">✏️ Edit</button>
+      <button class="panel-close" id="cdp-close-btn">×</button>
+    </div>
+  </div>
+  <div style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:16px;">
+
+    <!-- Key Fields -->
+    <div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:8px;">Property Details</div>
+      <div id="cdp-fields" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;"></div>
+    </div>
+
+    <!-- Notes -->
+    <div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:8px;">Notes <span id="cdp-notes-saving" style="font-weight:400;color:var(--text-muted);font-size:10px;"></span></div>
+      <textarea id="cdp-notes" class="form-control" rows="5" placeholder="Add notes…" style="font-size:12px;resize:vertical;"></textarea>
+    </div>
+
+    <!-- Documents -->
+    <div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:8px;">Documents</div>
+      <div id="cdp-docs" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;"></div>
+      <label class="btn btn-ghost btn-sm" style="cursor:pointer;">
+        📎 Upload Doc
+        <input type="file" id="cdp-doc-input" accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
+      </label>
+    </div>
+
+    <!-- Activity Log -->
+    <div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:8px;">Activity Log</div>
+      <div id="cdp-activity" style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--text-muted);"></div>
+    </div>
+
+  </div>
+</div>
+
 <!-- Tasks Panel -->
 <div id="tasks-panel">
   <div class="panel-header"><h3>📋 Automation Tasks</h3><button class="panel-close" id="panel-close-btn">×</button></div>
@@ -440,6 +496,21 @@ td.editable input{background:var(--bg);border:1px solid var(--accent);border-rad
     </div>
     <div class="modal-body">
       <input type="hidden" id="prop-id">
+      <!-- URL Import -->
+      <div style="margin-bottom:14px;">
+        <label class="form-label">🔗 Import from Listing URL</label>
+        <div style="display:flex;gap:8px;">
+          <input type="url" id="prop-listing-url" class="form-control" placeholder="Paste a LoopNet, CoStar, or any listing URL…" style="flex:1;">
+          <button type="button" class="btn btn-secondary" id="btn-fetch-url" style="white-space:nowrap;flex-shrink:0;">⚡ Fetch & Fill</button>
+        </div>
+        <div id="url-fetch-status" style="font-size:12px;color:var(--text-muted);margin-top:5px;min-height:16px;"></div>
+        <!-- Paste fallback for sites like LoopNet that block proxies -->
+        <div id="paste-fallback" style="display:none;margin-top:8px;">
+          <div style="font-size:12px;color:#fbbf24;margin-bottom:5px;">⚠️ This site blocks automated fetching. On the listing page press <strong>Cmd+A</strong> then <strong>Cmd+C</strong>, then paste below:</div>
+          <textarea id="paste-text-input" class="form-control" rows="3" placeholder="Paste listing page text here…" style="font-size:12px;resize:vertical;"></textarea>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-fill-from-paste" style="margin-top:6px;">Fill from Pasted Text</button>
+        </div>
+      </div>
       <div id="doc-drop-zone" class="doc-drop-zone" style="display:none;">
         🤖 Drop a PDF or image here — AI will auto-fill the fields below
         <div style="font-size:11px;margin-top:3px;opacity:.7">Click to browse · Supports PDF, JPG, PNG</div>
@@ -494,6 +565,14 @@ td.editable input{background:var(--bg);border:1px solid var(--accent);border-rad
           <div class="form-group"><label class="form-label">Seller Name</label><input type="text" id="prop-seller" class="form-control" placeholder="John &amp; Jane Doe"></div>
           <div class="form-group"><label class="form-label">County</label><input type="text" id="prop-county" class="form-control" placeholder="Hillsborough"></div>
         </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Effective Date</label><input type="date" id="prop-effective-date" class="form-control"></div>
+          <div class="form-group"><label class="form-label">Deposit Amount ($)</label><input type="number" id="prop-deposit-amount" class="form-control" placeholder="e.g. 10000" min="0"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Escrow Agent Name</label><input type="text" id="prop-escrow-agent" class="form-control" placeholder="ABC Title Co."></div>
+          <div class="form-group"><label class="form-label">Escrow Agent Phone</label><input type="text" id="prop-escrow-phone" class="form-control" placeholder="(813) 555-0000"></div>
+        </div>
         <div class="form-group"><label class="form-label">Legal Description</label><textarea id="prop-legal-desc" class="form-control" rows="2" placeholder="Lot X, Block Y, Subdivision…"></textarea></div>
         <div class="form-row-3">
           <div class="form-group"><label class="form-label">SEC</label><input type="text" id="prop-sec" class="form-control" placeholder="14"></div>
@@ -531,6 +610,29 @@ td.editable input{background:var(--bg);border:1px solid var(--accent);border-rad
       <button class="btn btn-secondary" data-close="property-modal">Cancel</button>
       <button class="btn btn-ghost btn-sm" id="btn-gen-psa" style="display:none;">📄 Generate PSA</button>
       <button class="btn btn-primary" id="btn-save-property">Save Property</button>
+    </div>
+  </div>
+</div>
+
+<!-- Due Diligence PSA Upload Modal -->
+<div class="modal-overlay hidden" id="dd-psa-modal">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <h3>📄 Upload Signed PSA</h3>
+      <button class="modal-close" id="dd-psa-cancel-x">×</button>
+    </div>
+    <div class="modal-body" style="max-height:none;">
+      <p style="color:var(--text-muted);margin-bottom:16px;">A signed Purchase &amp; Sale Agreement is required to move this deal into Due Diligence.</p>
+      <div id="dd-psa-drop-zone" class="doc-drop-zone" style="cursor:pointer;">
+        📄 Drop PSA here or click to browse
+        <div style="font-size:11px;margin-top:3px;opacity:.7">Supports PDF, JPG, PNG</div>
+      </div>
+      <input type="file" id="dd-psa-file-input" accept=".pdf,.jpg,.jpeg,.png" style="display:none">
+      <div id="dd-psa-filename" style="font-size:12px;color:var(--accent);margin-top:6px;display:none;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="dd-psa-cancel">Cancel</button>
+      <button class="btn btn-primary" id="dd-psa-confirm" disabled>Upload &amp; Move to Due Diligence</button>
     </div>
   </div>
 </div>
@@ -648,13 +750,34 @@ const FB_SUMMARY_OPTIONS = [
 const FB_MAP = Object.fromEntries(FB_SUMMARY_OPTIONS.map(o=>[o.value,o]));
 
 const AUTOMATIONS = {
+  // Keys are destination stage — triggers regardless of what stage the card came from
   // possible→draft_offer is handled by autoGeneratePSATask (no manual tasks needed)
-  'draft_offer→offer_outstanding':  [{title:'Submit Offer to Seller',desc:'Send formal offer package to listing agent'},{title:'Notify Investor Group',desc:'Send offer summary to investors'}],
-  'offer_outstanding→due_diligence':[{title:'Order Property Inspection',desc:'Schedule inspection'},{title:'Order Title Search',desc:'Engage title company'},{title:'Environmental Review',desc:'Phase 1 ESA check'}],
-  'due_diligence→permitting':       [{title:'Submit Permit Applications',desc:'File permits with municipality'},{title:'Engage Architect/Engineer',desc:'Retain design professionals'}],
-  'permitting→closing':             [{title:'Schedule Closing Date',desc:'Coordinate with all parties'},{title:'Final Walkthrough',desc:'Conduct final walkthrough'},{title:'Wire Transfer Setup',desc:'Arrange closing funds'}],
-  'closing→closed':                 [{title:'Record Deed',desc:'Confirm deed recorded with county'},{title:'Notify Accounting',desc:'Send closing package to accounting'}],
-  '→dead':                          [{title:'Archive Property File',desc:'Move documents to archive'},{title:'Send Pass Notification',desc:'Notify relevant parties'}],
+  'offer_outstanding': [{title:'📞 Follow Up with Seller',desc:'Contact seller or listing broker to discuss offer status and any counter-offers'}],
+  'due_diligence':[
+    {title:'📄 Upload Signed PSA',desc:'Upload the executed Purchase & Sale Agreement — AI will auto-extract effective date, escrow agent, DD deadline, deposit amount, and closing date'},
+    {title:'💰 Issue Earnest Money Deposit',desc:'Verify deposit amount from the PSA and wire funds to escrow agent per the contract terms'},
+    {title:'🌿 Order Environmental Review',desc:'Engage Phase 1 ESA consultant to begin environmental assessment'},
+    {title:'📐 Get Survey Quote',desc:'Contact licensed surveyor for boundary and topographic survey quote'},
+    {title:'🏛 Confirm Zoning Allows Use',desc:'Verify with municipality that zoning permits intended use (EV charging / robo-taxi facility). Get written confirmation if possible.'},
+    {title:'🏦 Get Loan Commitment from Bank',desc:'Submit loan application and supporting docs to lender — obtain written loan commitment letter'},
+    {title:'📝 Get Lease Signed with Tenant',desc:'Finalize and execute NNN lease agreement with tenant before DD expiration'},
+    {title:'💼 Raise Equity Commitment',desc:'Confirm equity partner commitments in writing — collect signed subscription agreements or commitment letters'},
+  ],
+  'permitting':       [{title:'Submit Permit Applications',desc:'File permits with municipality'},{title:'Engage Architect/Engineer',desc:'Retain design professionals'}],
+  'closing':             [
+    {title:'🏦 Set Up Bank Account',desc:'Open dedicated project bank account for closing funds and ongoing operations'},
+    {title:'📞 Call Equity Partners',desc:'Notify equity partners of closing date and confirm capital call timing and wire instructions'},
+    {title:'📋 Review Closing Docs',desc:'Review all closing documents with attorney — HUD/ALTA settlement statement, deed, title policy, loan docs'},
+    {title:'🚧 Put Up Fencing & Signage',desc:'Install perimeter fencing and site signage per tenant/brand standards prior to or immediately after closing'},
+    {title:'💸 Wire Transfer Setup',desc:'Coordinate closing funds wire with bank and escrow agent — confirm wire instructions in writing'},
+  ],
+  'closed':                 [
+    {title:'📁 Organize Closing Files & Title Policy',desc:'Compile all closing documents into organized folders — deed, title policy, settlement statement, loan docs, lease, survey, environmental. Store in cloud and physical binder.'},
+    {title:'🤝 Formal Site Turnover to Tenant',desc:'Conduct official site walkthrough with tenant, deliver keys/access codes, execute turnover checklist, and document site condition at handover.'},
+    {title:'📊 Accounting Setup — Docs, Lease & Rent Commencement',desc:'Confirm accounting has: fully executed lease, rent commencement date, CAM/NNN schedule, tenant contact info, all closing docs, and loan payment schedule. Verify first rent payment date is calendared.'},
+    {title:'📋 Record Deed with County',desc:'Confirm deed has been recorded with the county clerk and obtain recorded copy with book/page reference for files.'},
+  ],
+  'dead':                           [{title:'Archive Property File',desc:'Move documents to archive'},{title:'Send Pass Notification',desc:'Notify relevant parties'}],
 };
 
 const DD_STAGES = ['due_diligence','permitting','closing','closed'];
@@ -734,7 +857,10 @@ async function showAdminView(user){
   setAdminView('kanban');
   listenProperties(()=>{
     renderKanban(); renderAdminTable(); renderAdminPubTable();
+    if(adminView==='deaddeals') renderDeadDeals();
     if(adminView==='frontend'&&previewTab==='map') renderMapView('map-canvas-preview','map-status-preview');
+    // Refresh card detail panel if open
+    if(_cdpPropId && allProperties[_cdpPropId]) { renderCdpDocs(_cdpPropId); renderCdpActivity(allProperties[_cdpPropId]); }
   });
   listenTasks(renderTasksPanel);
 }
@@ -946,6 +1072,13 @@ function renderSettingsView(){
         <input type="password" class="form-control" id="pf-api-key" value="${anthropicApiKey}" placeholder="sk-ant-…">
       </div>
       <button class="btn btn-primary" id="btn-save-api-key">Save API Key</button>
+    </div>
+
+    <div class="settings-card">
+      <div class="settings-card-title">Data Maintenance</div>
+      <div class="settings-card-desc">Scans for properties with matching addresses and merges them, keeping the best data from each. Safe to run anytime — only duplicates are affected.</div>
+      <button class="btn btn-secondary" id="btn-merge-dupes">🔍 Find &amp; Merge Duplicates</button>
+      <span id="merge-dupes-status" style="margin-left:12px;font-size:13px;color:var(--text-muted);"></span>
     </div>`;
 
   document.getElementById('btn-save-proforma').addEventListener('click', async ()=>{
@@ -1034,6 +1167,131 @@ function renderSettingsView(){
     toast('✅','API Key saved','AI document reading enabled');
     updateDropZone();
   });
+
+  document.getElementById('btn-merge-dupes').addEventListener('click', async ()=>{
+    const btn = document.getElementById('btn-merge-dupes');
+    const status = document.getElementById('merge-dupes-status');
+    btn.disabled = true; status.textContent = 'Scanning…';
+    const count = await findAndMergeDuplicates();
+    btn.disabled = false;
+    status.textContent = count === 0 ? '✓ No duplicates found' : `✓ Merged ${count} duplicate${count>1?'s':''}`;
+    setTimeout(()=>{ if(status) status.textContent=''; }, 5000);
+  });
+}
+
+// ── DUPLICATE DETECTION & MERGE ──────────────────────────────
+// Stage priority order (higher index = further along = preferred)
+const STAGE_PRIORITY = ['possible','draft_offer','offer_outstanding','due_diligence','permitting','closing','closed','dead'];
+
+async function findAndMergeDuplicates(){
+  // Group all properties by normalized address
+  const groups = {};
+  Object.values(allProperties).forEach(p=>{
+    if(!p.address) return;
+    const key = _normalizeAddr(p.address);
+    if(!groups[key]) groups[key]=[];
+    groups[key].push(p);
+  });
+
+  // Keep only groups with more than one property
+  const dupeGroups = Object.values(groups).filter(g=>g.length>1);
+  if(!dupeGroups.length) return 0;
+
+  // Scalar fields to merge (latest non-empty wins, except for createdAt)
+  const SCALAR_FIELDS = ['address','city','state','price','size','parkingStalls','zoning','listingBroker',
+    'brokerPhone','offeredTerms','dueDiligenceDate','closingTargetDate','feedbackSummary','stallsNeeded',
+    'notes','publicVisible','sellerName','county','legalDesc','powerCompany','listingUrl','feeRate',
+    'secVal','twpVal','rngVal','initDeposit','depositDays','effectiveDate','depositAmount',
+    'escrowAgentName','escrowAgentPhone'];
+
+  let totalMerged = 0;
+
+  for(const group of dupeGroups){
+    // Sort: primary = earliest createdAt, rest are duplicates to absorb then delete
+    group.sort((a,b)=>{
+      const ta = a.createdAt?.toDate?.()?.getTime()||new Date(a.createdAt||0).getTime();
+      const tb = b.createdAt?.toDate?.()?.getTime()||new Date(b.createdAt||0).getTime();
+      return ta - tb;
+    });
+    const [primary, ...extras] = group;
+
+    // Build merged data: start with primary, layer in extras newest-first
+    const merged = {...primary};
+
+    // Stage: take the most progressed (excluding dead unless all are dead)
+    const allStages = group.map(p=>p.stage).filter(Boolean);
+    const nonDeadStages = allStages.filter(s=>s!=='dead');
+    const stagePool = nonDeadStages.length ? nonDeadStages : allStages;
+    merged.stage = stagePool.reduce((best,s)=>
+      STAGE_PRIORITY.indexOf(s) > STAGE_PRIORITY.indexOf(best) ? s : best
+    , stagePool[0]||'possible');
+
+    // deadAt: keep if merged stage is dead, else remove
+    if(merged.stage==='dead'){
+      // use earliest deadAt among the dead ones
+      const deadAts = group.filter(p=>p.deadAt).map(p=>p.deadAt?.toDate?.()?.getTime()||new Date(p.deadAt).getTime());
+      if(deadAts.length) merged.deadAt = new Date(Math.min(...deadAts)).toISOString();
+    } else {
+      delete merged.deadAt;
+    }
+
+    // Scalar fields: latest non-empty value wins over primary
+    const byNewest = [...group].sort((a,b)=>{
+      const ta = a.updatedAt?.toDate?.()?.getTime()||new Date(a.updatedAt||0).getTime();
+      const tb = b.updatedAt?.toDate?.()?.getTime()||new Date(b.updatedAt||0).getTime();
+      return tb - ta; // newest first
+    });
+    SCALAR_FIELDS.forEach(f=>{
+      const winner = byNewest.find(p=>p[f]!==null&&p[f]!==undefined&&p[f]!=='');
+      if(winner&&(merged[f]===null||merged[f]===undefined||merged[f]==='')) merged[f]=winner[f];
+    });
+
+    // Documents: merge arrays, dedup by storageUrl or name
+    const allDocs = group.flatMap(p=>p.documents||[]);
+    const seenDocs = new Set();
+    merged.documents = allDocs.filter(d=>{
+      const key = d.storageUrl||d.name||JSON.stringify(d);
+      if(seenDocs.has(key)) return false;
+      seenDocs.add(key); return true;
+    });
+
+    merged.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+    const {id:primaryId, ...mergedData} = merged;
+
+    try {
+      let batch = db.batch();
+      let opCount = 0;
+
+      // Update the primary doc
+      batch.update(db.collection('properties').doc(primaryId), mergedData);
+      opCount++;
+
+      // Reassign tasks from duplicates to primary
+      const extraIds = extras.map(e=>e.id);
+      const taskSnap = await db.collection('tasks')
+        .where('propertyId','in', extraIds.slice(0,10)) // Firestore 'in' limit = 10
+        .get();
+      taskSnap.forEach(doc=>{
+        batch.update(doc.ref,{propertyId:primaryId, propertyAddress:merged.address||''});
+        opCount++;
+        if(opCount>=400){ batch.commit(); batch=db.batch(); opCount=0; }
+      });
+
+      // Delete duplicate docs
+      extras.forEach(e=>{
+        batch.delete(db.collection('properties').doc(e.id));
+        opCount++;
+      });
+
+      await batch.commit();
+      totalMerged += extras.length;
+    } catch(err){
+      toast('❌','Merge error',err.message);
+    }
+  }
+
+  if(totalMerged>0) toast('✅','Duplicates merged',`${totalMerged} duplicate propert${totalMerged>1?'ies':'y'} removed`);
+  return totalMerged;
 }
 
 // ── PRO FORMA ────────────────────────────────────────────────
@@ -1222,6 +1480,7 @@ async function execDeadMove(cost){
   if(pc>0) updates.pursuitCosts = pc;
   try{
     await db.collection('properties').doc(propId).update(updates);
+    logHistory(propId, `Marked Dead (from ${STAGE_MAP[oldStage]?.label||oldStage})${pc>0?' · $'+pc.toLocaleString()+' pursuit costs':''}`, '#f87171');
     triggerAutomations(propId,oldStage,'dead',allProperties[propId]?.address||'');
   }catch(err){ toast('❌','Update failed',err.message); }
 }
@@ -1232,6 +1491,88 @@ document.getElementById('dead-cancel-x').addEventListener('click',()=>{
   document.getElementById('dead-prompt-modal').classList.add('hidden');
   renderKanban();
 });
+
+// ── DUE DILIGENCE PSA UPLOAD MODAL ───────────────────────────
+let pendingDDMove = null;
+let pendingDDFile = null;
+
+function showDDPSAPrompt(propId, oldStage){
+  pendingDDMove = {propId, oldStage};
+  pendingDDFile = null;
+  const fileInp = document.getElementById('dd-psa-file-input');
+  const confirmBtn = document.getElementById('dd-psa-confirm');
+  const dropZone = document.getElementById('dd-psa-drop-zone');
+  const filenameEl = document.getElementById('dd-psa-filename');
+  fileInp.value = '';
+  confirmBtn.disabled = true;
+  dropZone.className = 'doc-drop-zone';
+  filenameEl.style.display = 'none';
+  filenameEl.textContent = '';
+  document.getElementById('dd-psa-modal').classList.remove('hidden');
+}
+
+function _ddSetFile(file){
+  if(!file) return;
+  pendingDDFile = file;
+  const filenameEl = document.getElementById('dd-psa-filename');
+  filenameEl.textContent = '✅ ' + file.name;
+  filenameEl.style.display = 'block';
+  document.getElementById('dd-psa-confirm').disabled = false;
+  document.getElementById('dd-psa-drop-zone').className = 'doc-drop-zone success';
+}
+
+async function execDDMove(){
+  if(!pendingDDMove || !pendingDDFile) return;
+  const {propId, oldStage} = pendingDDMove;
+  pendingDDMove = null;
+  const file = pendingDDFile;
+  pendingDDFile = null;
+  document.getElementById('dd-psa-modal').classList.add('hidden');
+  const confirmBtn = document.getElementById('dd-psa-confirm');
+  confirmBtn.disabled = true;
+  allProperties[propId].stage = 'due_diligence';
+  renderKanban();
+  try{
+    await uploadPropertyDoc(propId, file);
+    await db.collection('properties').doc(propId).update({stage:'due_diligence', updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+    logHistory(propId, `Moved to Due Diligence (from ${STAGE_MAP[oldStage]?.label||oldStage}) · PSA uploaded: ${file.name}`);
+    triggerAutomations(propId, oldStage, 'due_diligence', allProperties[propId]?.address||'');
+  }catch(err){
+    allProperties[propId].stage = oldStage;
+    renderKanban();
+    toast('❌','Move failed', err.message);
+  }
+}
+
+// Wire up DD PSA modal events
+(function(){
+  const modal = document.getElementById('dd-psa-modal');
+  const fileInp = document.getElementById('dd-psa-file-input');
+  const dropZone = document.getElementById('dd-psa-drop-zone');
+
+  function cancelDDMove(){
+    pendingDDMove = null;
+    pendingDDFile = null;
+    modal.classList.add('hidden');
+    renderKanban();
+  }
+
+  document.getElementById('dd-psa-cancel-x').addEventListener('click', cancelDDMove);
+  document.getElementById('dd-psa-cancel').addEventListener('click', cancelDDMove);
+  document.getElementById('dd-psa-confirm').addEventListener('click', execDDMove);
+
+  dropZone.addEventListener('click', ()=>fileInp.click());
+  fileInp.addEventListener('change', e=>{ const f=e.target.files[0]; if(f) _ddSetFile(f); e.target.value=''; });
+
+  dropZone.addEventListener('dragover', e=>{ e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', ()=>dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e=>{
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if(f) _ddSetFile(f);
+  });
+})();
 
 // ── KANBAN ───────────────────────────────────────────────────
 function renderKanban(){
@@ -1282,6 +1623,7 @@ function buildCard(prop){
   const moreChip = docs.length>3?`<span class="card-doc-more">+${docs.length-3} more</span>`:'';
 
   card.innerHTML=`
+    <button class="card-del-btn" data-id="${prop.id}" title="Delete property">🗑</button>
     <button class="card-menu-btn" data-id="${prop.id}">✏️</button>
     <div class="prop-card-address">${esc(prop.address)}</div>
     <div class="prop-card-meta">${esc(prop.city||'')}${prop.state?', '+esc(prop.state):''}${prop.zoning?' · '+esc(prop.zoning):''}${prop.parkingStalls?' · '+prop.parkingStalls+' stalls':''}${prop.powerCompany?' · ⚡ '+esc(prop.powerCompany):''}</div>
@@ -1306,7 +1648,13 @@ function buildCard(prop){
     </div>`;
 
   card.addEventListener('dragstart',onDragStart);
+  card.addEventListener('dragend',onDragEnd);
+  card.addEventListener('click', e=>{
+    if(e.target.closest('.card-menu-btn,.card-del-btn,.card-upload-btn,.card-file-input,.card-doc-chip')) return;
+    openCardPanel(prop.id);
+  });
   card.querySelector('.card-menu-btn').addEventListener('click',e=>{e.stopPropagation();openPropertyModal(prop.id);});
+  card.querySelector('.card-del-btn').addEventListener('click',e=>{e.stopPropagation();deleteProperty(prop.id);});
 
   // Document upload
   const uploadBtn=card.querySelector('.card-upload-btn');
@@ -1326,6 +1674,7 @@ function buildCard(prop){
 
 let draggingId=null;
 function onDragStart(e){ draggingId=e.currentTarget.dataset.id; e.currentTarget.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; }
+function onDragEnd(e){ e.currentTarget.classList.remove('dragging'); }
 async function onDrop(e){
   e.preventDefault();
   document.querySelectorAll('.kanban-cards').forEach(c=>c.classList.remove('drag-over'));
@@ -1337,11 +1686,36 @@ async function onDrop(e){
   const id       = draggingId;
   draggingId     = null;
   if(newStage==='dead'){ showDeadPrompt(id,oldStage); return; }
+  if(newStage==='due_diligence'){ showDDPSAPrompt(id,oldStage); return; }
   allProperties[id].stage=newStage; renderKanban();
   try{
     await db.collection('properties').doc(id).update({stage:newStage,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+    logHistory(id, `Moved to ${STAGE_MAP[newStage]?.label||newStage} (from ${STAGE_MAP[oldStage]?.label||oldStage})`);
     triggerAutomations(id,oldStage,newStage,prop.address);
   }catch(err){ allProperties[id].stage=oldStage; renderKanban(); toast('❌','Update failed',err.message); }
+}
+
+// ── REMINDER TASK SCHEDULER ──────────────────────────────────
+async function scheduleReminderTasks(propId, ddDateStr, address){
+  if(!ddDateStr) return;
+  const dd = new Date(ddDateStr+'T12:00:00');
+  if(isNaN(dd.getTime())) return;
+  const minus30 = new Date(dd); minus30.setDate(dd.getDate()-30);
+  const minus1  = new Date(dd); minus1.setDate(dd.getDate()-1);
+  const toISO = d => d.toISOString().split('T')[0];
+  const reminders = [
+    { title:'📬 Send Title & Survey Objection Notice', desc:'30 days before DD expiration — review title commitment and survey, send any objections to seller per PSA terms.', scheduledFor: toISO(minus30) },
+    { title:'⚠️ Decision: Terminate or Elect to Proceed', desc:'DD expires tomorrow ('+ddDateStr+') — must notify seller in writing by end of business today to either terminate contract or elect to proceed to closing.', scheduledFor: toISO(minus1) },
+  ];
+  // Remove any existing reminder tasks for this property to avoid duplicates
+  const existing = Object.values(allTasks).filter(t=>t.propertyId===propId && t.triggeredBy==='dd_reminder');
+  const batch = db.batch();
+  existing.forEach(t=>batch.delete(db.collection('tasks').doc(t.id)));
+  reminders.forEach(r=>{
+    batch.set(db.collection('tasks').doc(),{...r,propertyId:propId,propertyAddress:address||'',status:'pending',triggeredBy:'dd_reminder',createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+  });
+  await batch.commit();
+  toast('📅','Reminders scheduled','Title objection & terminate/proceed tasks created');
 }
 
 // ── AUTOMATIONS ──────────────────────────────────────────────
@@ -1351,8 +1725,7 @@ async function triggerAutomations(propId,fromStage,toStage,address){
     autoGeneratePSATask(propId);
     return;
   }
-  const key  = fromStage+'→'+toStage;
-  const tpls = AUTOMATIONS[key]||(toStage==='dead'?AUTOMATIONS['→dead']:[]);
+  const tpls = AUTOMATIONS[toStage]||[];
   if(!tpls.length) return;
   toast('⚡','Automation triggered',tpls.length+' task(s) created');
   const batch = db.batch();
@@ -1417,6 +1790,7 @@ function renderAdminTable(){
       if(ns==='dead'){ showDeadPrompt(id,prop.stage); e.target.value=prop.stage; return; }
       const os=prop.stage;
       await db.collection('properties').doc(id).update({stage:ns,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+      logHistory(id, `Moved to ${STAGE_MAP[ns]?.label||ns} (from ${STAGE_MAP[os]?.label||os})`);
       triggerAutomations(id,os,ns,prop.address);
     });
   });
@@ -1524,6 +1898,7 @@ function renderActiveTable(tbodyId,props,isPreview){
               updatedAt:firebase.firestore.FieldValue.serverTimestamp()
             });
             if(allProperties[pid]){ allProperties[pid].feedbackSummary=nv; allProperties[pid].stage='draft_offer'; }
+            logHistory(pid, 'Feedback: Immediately Pursue · moved to Draft Offer', '#4ade80');
             if(currentUser) triggerAutomations(pid,oldStage,'draft_offer',prop.address);
             else await db.collection('tasks').add({title:`⚡ Immediately Pursue — ${prop.address}`,desc:`Public feedback set to Immediately Pursue. Card moved to Draft Offer — PSA may need generating.`,propertyId:pid,propertyAddress:prop.address||'',status:'pending',triggeredBy:'public_immediately_pursue',createdAt:firebase.firestore.FieldValue.serverTimestamp()});
             renderPublicTables(); renderAdminPubTable(); renderKanban(); renderAdminTable();
@@ -1532,7 +1907,30 @@ function renderActiveTable(tbodyId,props,isPreview){
         }
       }
 
+      // Auto-move to Dead when Pass selected
+      if(nv==='pass'){
+        const prop=allProperties[pid];
+        const oldStage=prop?.stage;
+        if(prop && oldStage !== 'dead'){
+          try{
+            await db.collection('properties').doc(pid).update({
+              feedbackSummary:nv,
+              stage:'dead',
+              deadAt:firebase.firestore.FieldValue.serverTimestamp(),
+              updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+            });
+            if(allProperties[pid]){ allProperties[pid].feedbackSummary=nv; allProperties[pid].stage='dead'; allProperties[pid].deadAt=new Date().toISOString(); }
+            logHistory(pid, 'Feedback: Pass · moved to Dead', '#f87171');
+            if(currentUser) triggerAutomations(pid,oldStage,'dead',prop.address);
+            else await db.collection('tasks').add({title:`❌ Passed — ${prop.address}`,desc:`Public feedback set to Pass. Deal moved to Dead on the Kanban board.`,propertyId:pid,propertyAddress:prop.address||'',status:'pending',triggeredBy:'public_pass',createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+            renderPublicTables(); renderAdminPubTable(); renderKanban(); renderAdminTable();
+            return;
+          }catch(err){ console.warn('Stage move failed, saving feedback only'); }
+        }
+      }
+
       await savePropField(pid,'feedbackSummary',nv);
+      if(nv) logHistory(pid, `Feedback set to: ${FB_MAP[nv]?.label||nv}`);
       // Re-render whenever feedback changes so property moves to the right tab instantly
       renderPublicTables(); renderAdminPubTable(); renderKanban(); renderAdminTable();
       if(!currentUser&&nv){
@@ -1646,9 +2044,13 @@ function openPropertyModal(id=null){
   set('prop-zoning',p?.zoning); set('prop-broker',p?.listingBroker); set('prop-broker-phone',p?.brokerPhone);
   set('prop-offered-terms',p?.offeredTerms); set('prop-dd-date',p?.dueDiligenceDate);
   set('prop-closing-date',p?.closingTargetDate); set('prop-seller',p?.sellerName);
+  set('prop-effective-date',p?.effectiveDate); set('prop-deposit-amount',p?.depositAmount);
+  set('prop-escrow-agent',p?.escrowAgentName); set('prop-escrow-phone',p?.escrowAgentPhone);
   set('prop-county',p?.county); set('prop-legal-desc',p?.legalDesc);
   set('prop-sec',p?.secVal); set('prop-twp',p?.twpVal); set('prop-rng',p?.rngVal);
   set('prop-power-company',p?.powerCompany);
+  set('prop-listing-url',p?.listingUrl);
+  document.getElementById('url-fetch-status').textContent='';
   // Load fee rate with % symbol
   const feeRateEl=document.getElementById('prop-fee-rate');
   if(feeRateEl) feeRateEl.value = p?.feeRate!=null ? p.feeRate+'%' : '';
@@ -1815,6 +2217,266 @@ function pfRow(label, value, bold=false){
   });
 })();
 
+// ── PROPERTY APPRAISER LOOKUP ────────────────────────────────
+const FL_PA_URLS={
+  'pinellas':    'https://www.pcpao.gov/general.php?pSearchAddr=',
+  'hillsborough':'https://www.hcpafl.org/LinkClick.aspx?link=%2fPropSearch%2fSearch%2fSearch.aspx&tabid=1&address=',
+  'pasco':       'https://www.pascopafl.org/index.aspx?page=430&address=',
+  'manatee':     'https://www.manateepao.gov/propdetails.php?address=',
+  'sarasota':    'https://www.sc-pa.com/propertysearch/search.aspx?address=',
+  'polk':        'https://www.polkpa.org/CamaDisplay.aspx?OutputMode=Address&AddressSearch=',
+  'orange':      'https://www.ocpafl.org/searches/parcelsearch.aspx?addr=',
+  'seminole':    'https://www.scpafl.org/Search/CommercialSearch.aspx?address=',
+  'osceola':     'https://www.property.ocpafl.org/Search.aspx?search=',
+  'brevard':     'https://www.bcpao.us/Search.aspx?address=',
+  'volusia':     'https://ithinksmartgov.net/vcpao/Address.aspx?addr=',
+  'flagler':     'https://www.flaglerpa.com/Search.aspx?address=',
+  'palm beach':  'https://www.pbcgov.com/papa/search.aspx?address=',
+  'broward':     'https://www.bcpa.net/search.aspx?address=',
+  'miami-dade':  'https://www.miamidade.gov/PAPortal/SearchResults.aspx?address=',
+  'lee':         'https://www.leepa.org/Search/GenericSearch.aspx?address=',
+  'collier':     'https://www.collierappraiser.com/main_search/RecordSearch.aspx?address=',
+  'duval':       'https://apps.coj.net/pao_propertySearch/Basic/Search.aspx?address=',
+  'alachua':     'https://www.acpafl.org/Search.aspx?address=',
+  'bay':         'https://www.baypa.net/Search.aspx?address=',
+  'escambia':    'https://www.escpa.org/Search.aspx?address=',
+};
+async function lookupPropertyOwner(address, city, county){
+  const key=(anthropicApiKey||'').trim();
+  if(!key||!county) return null;
+  const countyKey=county.toLowerCase().replace(/\s+county\s*$/i,'').trim();
+  const paBase=FL_PA_URLS[countyKey];
+  if(!paBase) return null;
+  const searchAddr=encodeURIComponent(address+(city?' '+city:''));
+  const paUrl=paBase+searchAddr;
+  try{
+    const proxy='https://api.allorigins.win/raw?url='+encodeURIComponent(paUrl);
+    const r=await fetch(proxy,{signal:AbortSignal.timeout(8000)});
+    if(!r.ok) return null;
+    const html=await r.text();
+    const doc=new DOMParser().parseFromString(html,'text/html');
+    doc.querySelectorAll('script,style').forEach(e=>e.remove());
+    const text=(doc.body?.innerText||'').replace(/\s+/g,' ').trim().substring(0,4000);
+    if(!text) return null;
+    // Ask Claude to extract owner name from the property appraiser page
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:200,messages:[{role:'user',content:'From this Florida county property appraiser search result, extract the property OWNER name (not the appraiser office). Return ONLY the owner name string, nothing else. If multiple owners, return all joined with &. If not found, return null.\n\nSearch was for: '+address+', '+city+'\n\nPage text:\n'+text}]})
+    });
+    if(!resp.ok) return null;
+    const data=await resp.json();
+    const owner=(data.content[0].text||'').trim().replace(/^["']|["']$/g,'');
+    return (owner&&owner!=='null'&&owner.length<100)?owner:null;
+  }catch(e){ return null; }
+}
+
+// ── URL FETCH & FILL ─────────────────────────────────────────
+function parseUrlHints(url){
+  // Extract address/city/state directly from LoopNet URL slug
+  // e.g. /Listing/1505-1507-S-Missouri-Ave-Clearwater-FL/
+  const hints={};
+  try{
+    const m=url.match(/\/Listing\/([^\/]+)\//i);
+    if(m){
+      const slug=m[1]; // "1505-1507-S-Missouri-Ave-Clearwater-FL"
+      const stateM=slug.match(/-([A-Z]{2})$/);
+      if(stateM){
+        hints.state=stateM[1];
+        const noState=slug.slice(0,-(stateM[0].length));
+        // Split on hyphens; numbers+letters at start = address, word(s) before state = city
+        const parts=noState.split('-');
+        // Find where address ends: last part that starts with a digit or is a directional
+        const dirs=new Set(['N','S','E','W','NE','NW','SE','SW','St','Ave','Blvd','Dr','Rd','Ln','Ct','Way','Hwy','Pkwy']);
+        let cityStart=parts.length-1;
+        while(cityStart>0){
+          const p=parts[cityStart];
+          if(/^\d/.test(parts[0]) && (/^\d/.test(p)||dirs.has(p))) break;
+          cityStart--;
+        }
+        hints.address=parts.slice(0,cityStart+1).join(' ');
+        hints.city=parts.slice(cityStart+1).join(' ');
+      }
+    }
+  }catch(e){}
+  return hints;
+}
+
+async function fetchAndFillFromUrl(url){
+  const statusEl=document.getElementById('url-fetch-status');
+  const btn=document.getElementById('btn-fetch-url');
+  if(!url){ statusEl.style.color='#f87171'; statusEl.textContent='❌ Enter a URL first'; return; }
+  if(!anthropicApiKey){ statusEl.style.color='#f87171'; statusEl.textContent='❌ Set your Anthropic API key in Settings first'; return; }
+
+  btn.disabled=true; btn.textContent='⏳ Fetching…';
+  statusEl.style.color='var(--text-muted)'; statusEl.textContent='🔄 Fetching listing page…';
+
+  // Pre-fill address/city/state from URL itself (very reliable for LoopNet)
+  const hints=parseUrlHints(url);
+  if(hints.address){ const el=document.getElementById('prop-address'); if(el&&!el.value) el.value=hints.address; }
+  if(hints.city){    const el=document.getElementById('prop-city');    if(el&&!el.value) el.value=hints.city; }
+  if(hints.state){   const el=document.getElementById('prop-state');   if(el&&!el.value) el.value=hints.state; }
+
+  let pageText='';
+  window._pendingAttachmentUrls=[];
+  const proxies=[
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    `https://corsproxy.io/?${encodeURIComponent(url)}`
+  ];
+  const baseOrigin=new URL(url).origin;
+  for(const proxyUrl of proxies){
+    try{
+      const r=await fetch(proxyUrl,{signal:AbortSignal.timeout(10000)});
+      if(!r.ok) continue;
+      const html=await r.text();
+      const parser=new DOMParser();
+      const doc=parser.parseFromString(html,'text/html');
+      // Collect attachment links (PDFs, brochures, OM docs)
+      window._pendingAttachmentUrls=[...doc.querySelectorAll('a[href]')]
+        .map(a=>{ try{ return new URL(a.getAttribute('href')||'',url).href; }catch(e){ return ''; } })
+        .filter(h=>h && (h.match(/\.(pdf|doc|docx)(\?|#|$)/i)||h.match(/(brochure|flyer|offering.memo|download|om[-_]|documents)/i)))
+        .filter((h,i,a)=>a.indexOf(h)===i).slice(0,6);
+      // JSON-LD structured data
+      let jsonLd='';
+      doc.querySelectorAll('script[type="application/ld+json"]').forEach(s=>{
+        try{ jsonLd+=JSON.stringify(JSON.parse(s.textContent))+'\n'; }catch(e){}
+      });
+      const metaDesc=doc.querySelector('meta[name="description"],meta[property="og:description"]')?.content||'';
+      const title=doc.querySelector('meta[property="og:title"]')?.content||doc.title||'';
+      const dataAttrs=[...doc.querySelectorAll('[data-price],[data-zoning],[data-lot-size],[data-acreage]')]
+        .map(el=>JSON.stringify(el.dataset)).join('\n');
+      doc.querySelectorAll('script,style,nav,header,footer,iframe').forEach(el=>el.remove());
+      const body=(doc.body?.innerText||doc.body?.textContent||'').replace(/[ \t]+/g,' ').trim();
+      const ldPart=jsonLd?'\nStructured Data (JSON-LD):\n'+jsonLd:'';
+      const daPart=dataAttrs?'\nData Attributes:\n'+dataAttrs:'';
+      pageText=('Listing URL: '+url+'\nPage Title: '+title+'\nMeta Description: '+metaDesc+ldPart+daPart+'\n\nFull Page Text:\n'+body).substring(0,12000);
+      break;
+    }catch(e){ continue; }
+  }
+
+  if(!pageText||pageText.length<1000){
+    // Site is blocking proxy — show paste fallback
+    statusEl.style.color='#fbbf24';
+    statusEl.textContent='⚠️ This site blocks automated access — use the paste fallback below';
+    document.getElementById('paste-fallback').style.display='block';
+    btn.disabled=false; btn.textContent='⚡ Fetch & Fill';
+    return;
+  } else {
+    document.getElementById('paste-fallback').style.display='none';
+    statusEl.textContent='🤖 AI reading listing details…';
+  }
+
+  try{
+    const key=(anthropicApiKey||'').trim();
+    const prompt=`Extract ALL available commercial real estate details from this listing. Return ONLY valid JSON — use null for any field not found:
+{
+  "address": "street number and name only, no city or state",
+  "city": "city name",
+  "state": "2-letter state code",
+  "county": "county name (e.g. Pinellas, Hillsborough) — check page for county references",
+  "price": asking price as a number with no formatting,
+  "size": "lot/land size — look for Lot Size, Land Area, Acreage, SF, AC fields",
+  "parkingStalls": number of parking spaces or stalls as integer,
+  "zoning": "zoning code — look for Zoning, Land Use, or Zoning Description fields",
+  "listingBroker": "listing broker or agent name",
+  "brokerPhone": "broker phone number",
+  "powerCompany": "electric utility — look for Electric Service, Electric Provider, Utilities, or Power fields",
+  "notes": "2-3 sentence property description"
+}
+
+Important: LoopNet listings show details like Zoning, Lot Size, Electric Service in property spec tables — extract those carefully.
+
+Source:
+${pageText}`;
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1024,messages:[{role:'user',content:prompt}]})
+    });
+    if(!resp.ok){ const e=await resp.json().catch(()=>{}); throw new Error(e?.error?.message||'API error '+resp.status); }
+    const data=await resp.json();
+    const m=data.content[0].text.trim().match(/\{[\s\S]*\}/);
+    if(!m) throw new Error('No data extracted');
+    const r=JSON.parse(m[0]);
+    let filled=0;
+    const fill=(id,val)=>{ if(!val&&val!==0) return; const el=document.getElementById(id); if(el&&!el.value){ el.value=String(val); filled++; } };
+    fill('prop-address',r.address); fill('prop-city',r.city); fill('prop-state',r.state);
+    fill('prop-county',r.county); fill('prop-price',r.price); fill('prop-size',r.size);
+    fill('prop-parking',r.parkingStalls); fill('prop-zoning',r.zoning);
+    fill('prop-broker',r.listingBroker); fill('prop-broker-phone',r.brokerPhone);
+    fill('prop-power-company',r.powerCompany); fill('prop-notes',r.notes);
+    document.getElementById('prop-price')?.dispatchEvent(new Event('input'));
+    // Lookup seller/owner from county property appraiser if county known
+    const county=r.county||(document.getElementById('prop-county')?.value);
+    const addr2=r.address||(document.getElementById('prop-address')?.value);
+    if(county&&addr2&&(r.state||'FL')==='FL'){
+      statusEl.textContent='🔍 Looking up property owner from county appraiser…';
+      lookupPropertyOwner(addr2, r.city||document.getElementById('prop-city')?.value, county)
+        .then(owner=>{ if(owner){ fill('prop-seller',owner); filled++; } })
+        .catch(()=>{});
+    }
+    statusEl.style.color='#4ade80';
+    const attMsg=window._pendingAttachmentUrls?.length?' · '+window._pendingAttachmentUrls.length+' attachment(s) will upload on Save':'';
+    statusEl.textContent='✅ Filled '+filled+' field'+(filled!==1?'s':'')+' from listing'+attMsg;
+  }catch(e){
+    statusEl.style.color='#f87171';
+    statusEl.textContent='❌ '+e.message;
+  }
+  btn.disabled=false; btn.textContent='⚡ Fetch & Fill';
+}
+
+document.getElementById('btn-fetch-url').addEventListener('click',()=>{
+  fetchAndFillFromUrl(document.getElementById('prop-listing-url').value.trim());
+});
+document.getElementById('prop-listing-url').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){ e.preventDefault(); fetchAndFillFromUrl(e.target.value.trim()); }
+});
+document.getElementById('btn-fill-from-paste').addEventListener('click',async()=>{
+  const pasteText=document.getElementById('paste-text-input').value.trim();
+  const statusEl=document.getElementById('url-fetch-status');
+  const url=document.getElementById('prop-listing-url').value.trim();
+  if(!pasteText){ statusEl.style.color='#f87171'; statusEl.textContent='❌ Paste some text first'; return; }
+  if(!anthropicApiKey){ statusEl.style.color='#f87171'; statusEl.textContent='❌ Set your API key in Settings first'; return; }
+  statusEl.style.color='var(--text-muted)'; statusEl.textContent='🤖 AI reading pasted text…';
+  // Pre-fill from URL hints
+  const hints=parseUrlHints(url);
+  if(hints.address){ const el=document.getElementById('prop-address'); if(el&&!el.value) el.value=hints.address; }
+  if(hints.city){    const el=document.getElementById('prop-city');    if(el&&!el.value) el.value=hints.city; }
+  if(hints.state){   const el=document.getElementById('prop-state');   if(el&&!el.value) el.value=hints.state; }
+  try{
+    const key=(anthropicApiKey||'').trim();
+    const prompt=`Extract ALL available commercial real estate details from this listing. Return ONLY valid JSON — use null for any field not found:
+{"address":"street number and name only","city":"city name","state":"2-letter","county":"county name","price":numberOrNull,"size":"lot size string e.g. 0.38 AC","parkingStalls":numberOrNull,"zoning":"zoning code","listingBroker":"broker name","brokerPhone":"phone","powerCompany":"electric utility","notes":"2-3 sentence description"}
+
+Source:\n${(url?'URL: '+url+'\n':'')+pasteText.substring(0,10000)}`;
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1024,messages:[{role:'user',content:prompt}]})
+    });
+    if(!resp.ok){ const e=await resp.json().catch(()=>{}); throw new Error(e?.error?.message||'API '+resp.status); }
+    const data=await resp.json();
+    const m=data.content[0].text.trim().match(/\{[\s\S]*\}/);
+    if(!m) throw new Error('No data extracted');
+    const r=JSON.parse(m[0]);
+    let filled=0;
+    const fill=(id,val)=>{ if(!val&&val!==0) return; const el=document.getElementById(id); if(el&&!el.value){ el.value=String(val); filled++; } };
+    fill('prop-address',r.address); fill('prop-city',r.city); fill('prop-state',r.state);
+    fill('prop-county',r.county); fill('prop-price',r.price); fill('prop-size',r.size);
+    fill('prop-parking',r.parkingStalls); fill('prop-zoning',r.zoning);
+    fill('prop-broker',r.listingBroker); fill('prop-broker-phone',r.brokerPhone);
+    fill('prop-power-company',r.powerCompany); fill('prop-notes',r.notes);
+    document.getElementById('prop-price')?.dispatchEvent(new Event('input'));
+    document.getElementById('paste-fallback').style.display='none';
+    document.getElementById('paste-text-input').value='';
+    statusEl.style.color='#4ade80';
+    statusEl.textContent='✅ Filled '+filled+' field'+(filled!==1?'s':'')+' from pasted text';
+    // PA owner lookup
+    const county=r.county||document.getElementById('prop-county')?.value;
+    const addr=r.address||document.getElementById('prop-address')?.value;
+    if(county&&addr) lookupPropertyOwner(addr,r.city||document.getElementById('prop-city')?.value,county).then(owner=>{ if(owner) fill('prop-seller',owner); }).catch(()=>{});
+  }catch(e){ statusEl.style.color='#f87171'; statusEl.textContent='❌ '+e.message; }
+});
+
 function fileToB64(file){
   return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=e=>res(e.target.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(file); });
 }
@@ -1838,7 +2500,7 @@ async function extractPdfText(b64){
 async function callClaude(b64,mediaType){
   const key=(anthropicApiKey||'').trim();
   if(!key) throw new Error('No API key. Set it in Settings → AI Document Reading.');
-  const prompt='Extract property info. Return ONLY valid JSON: {"address":"street only","city":"","state":"2-letter or null","price":numberOrNull,"size":"acreage string or null","parkingStalls":numberOrNull,"zoning":"or null","sellerName":"or null","county":"or null","legalDesc":"or null"}. Null for not found.';
+  const prompt='Extract property and PSA/contract info. Return ONLY valid JSON: {"address":"street only","city":"","state":"2-letter or null","price":numberOrNull,"size":"acreage string or null","parkingStalls":numberOrNull,"zoning":"or null","sellerName":"or null","county":"or null","legalDesc":"or null","effectiveDate":"YYYY-MM-DD or null","depositAmount":numberOrNull,"escrowAgentName":"title company or escrow agent name or null","escrowAgentPhone":"or null","dueDiligenceDate":"YYYY-MM-DD expiration of due diligence period or null","closingDate":"YYYY-MM-DD or null"}. For PSA documents: look for Effective Date, Due Diligence Period expiration, Closing Date, Escrow Agent, and Deposit/Earnest Money amount. Null for not found.';
   let content;
   if(mediaType==='application/pdf'){
     // Extract text locally via pdf.js — avoids beta header CORS issues
@@ -1853,7 +2515,7 @@ async function callClaude(b64,mediaType){
     resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-3-5-haiku-20241022',max_tokens:1024,messages:[{role:'user',content}]})
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1024,messages:[{role:'user',content}]})
     });
   }catch(netErr){
     throw new Error('Could not reach AI — check your API key in Settings or try again');
@@ -1888,6 +2550,7 @@ async function uploadPropertyDoc(propId, file){
     });
     if(allProperties[propId]) allProperties[propId].documents=docs;
     toast('✅','Document saved','Stored on property card');
+    logHistory(propId, `Document uploaded: ${file.name}`);
     // Auto-read with Claude if API key is set
     if(anthropicApiKey) await readDocAndFill(propId, file);
   }catch(err){ toast('❌','Upload failed',err.message); }
@@ -1911,6 +2574,12 @@ async function readDocAndFill(propId, file){
       ['sellerName',result.sellerName,null],
       ['county',result.county,null],
       ['legalDesc',result.legalDesc,null],
+      ['effectiveDate',result.effectiveDate,null],
+      ['depositAmount',result.depositAmount,'number'],
+      ['escrowAgentName',result.escrowAgentName,null],
+      ['escrowAgentPhone',result.escrowAgentPhone,null],
+      ['dueDiligenceDate',result.dueDiligenceDate,null],
+      ['closingTargetDate',result.closingDate,null],
     ];
     const updates={};
     let filled=0;
@@ -1925,6 +2594,8 @@ async function readDocAndFill(propId, file){
       await db.collection('properties').doc(propId).update(updates);
       Object.assign(allProperties[propId]||{},updates);
       renderKanban(); renderAdminTable();
+      // If DD date was extracted, schedule reminder tasks
+      if(result.dueDiligenceDate) scheduleReminderTasks(propId, result.dueDiligenceDate, prop.address);
       // Refresh modal form fields if this property's modal is open
       const openId=document.getElementById('prop-id')?.value;
       if(openId===propId && !document.getElementById('property-modal').classList.contains('hidden')){
@@ -1947,6 +2618,15 @@ document.getElementById('btn-save-property').addEventListener('click', async ()=
   const addr = document.getElementById('prop-address').value.trim();
   const city = document.getElementById('prop-city').value.trim();
   if(!addr){ alert('Address is required'); return; }
+  // Duplicate check for new properties only
+  if(!id){
+    const normNew = _normalizeAddr(addr);
+    const existing = Object.values(allProperties).find(p=>_normalizeAddr(p.address)===normNew);
+    if(existing){
+      const go = confirm(`⚠️ A property with this address already exists:\n"${existing.address}"\n\nSave anyway and create a duplicate?`);
+      if(!go) return;
+    }
+  }
   const ns = document.getElementById('prop-stage').value;
   const data={
     address:addr, city, state:document.getElementById('prop-state').value.trim().toUpperCase(),
@@ -1955,6 +2635,7 @@ document.getElementById('btn-save-property').addEventListener('click', async ()=
     parkingStalls:parseInt(document.getElementById('prop-parking').value)||null,
     zoning:document.getElementById('prop-zoning').value.trim(),
     powerCompany:document.getElementById('prop-power-company').value.trim(),
+    listingUrl:document.getElementById('prop-listing-url')?.value.trim()||null,
     feeRate:parseFloat((document.getElementById('prop-fee-rate').value||'').replace('%',''))||null,
     stage:ns,
     listingBroker:document.getElementById('prop-broker').value.trim(),
@@ -1964,6 +2645,10 @@ document.getElementById('btn-save-property').addEventListener('click', async ()=
     closingTargetDate:document.getElementById('prop-closing-date').value,
     sellerName:document.getElementById('prop-seller').value.trim(),
     county:document.getElementById('prop-county').value.trim(),
+    effectiveDate:document.getElementById('prop-effective-date')?.value||null,
+    depositAmount:parseFloat(document.getElementById('prop-deposit-amount')?.value)||null,
+    escrowAgentName:document.getElementById('prop-escrow-agent')?.value.trim()||null,
+    escrowAgentPhone:document.getElementById('prop-escrow-phone')?.value.trim()||null,
     legalDesc:document.getElementById('prop-legal-desc').value.trim(),
     secVal:document.getElementById('prop-sec').value.trim(),
     twpVal:document.getElementById('prop-twp').value.trim(),
@@ -1986,6 +2671,35 @@ document.getElementById('btn-save-property').addEventListener('click', async ()=
   }
   closeModal('property-modal');
   toast('✅',id?'Property updated':'Property added',addr);
+  // Upload any attachments found during URL fetch
+  if(window._pendingAttachmentUrls?.length){
+    const attachUrls=[...window._pendingAttachmentUrls];
+    window._pendingAttachmentUrls=[];
+    // Get the property ID (existing or newly created — wait for Firestore listener)
+    setTimeout(async()=>{
+      // Find the property by address
+      const prop=Object.values(allProperties).find(p=>(p.address||'').toLowerCase()===addr.toLowerCase());
+      if(!prop) return;
+      for(const attUrl of attachUrls){
+        try{
+          const proxyUrl='https://corsproxy.io/?'+encodeURIComponent(attUrl);
+          const r=await fetch(proxyUrl,{signal:AbortSignal.timeout(10000)});
+          if(!r.ok) throw new Error('fetch failed');
+          const blob=await r.blob();
+          const filename=decodeURIComponent(attUrl.split('/').pop().split('?')[0])||'document.pdf';
+          const file=new File([blob],filename,{type:blob.type||'application/octet-stream'});
+          await uploadPropertyDoc(prop.id,file);
+        }catch(e){
+          // Store as external URL reference if download blocked
+          const name=decodeURIComponent(attUrl.split('/').pop().split('?')[0])||'Listing Document';
+          const docs=[...(allProperties[prop.id]?.documents||[]),{name,url:attUrl,type:'text/url',uploadedAt:new Date().toISOString()}];
+          await db.collection('properties').doc(prop.id).update({documents:docs,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+          if(allProperties[prop.id]) allProperties[prop.id].documents=docs;
+          toast('🔗','Attachment linked',name);
+        }
+      }
+    },1500);
+  }
 });
 
 async function deleteProperty(id){
@@ -2276,12 +2990,26 @@ document.getElementById('panel-close-btn').addEventListener('click',()=>document
 function renderTasksPanel(){
   const tasks=Object.values(allTasks);
   // Only show pending tasks — completed/dismissed disappear
-  const pending=tasks.filter(t=>t.status==='pending');
+  const today=new Date(); today.setHours(0,0,0,0);
+  const allPending=tasks.filter(t=>t.status==='pending');
+  // Scheduled tasks only appear on/after their scheduledFor date
+  const pending=allPending.filter(t=>!t.scheduledFor||new Date(t.scheduledFor+'T00:00:00')<=today);
+  const upcoming=allPending.filter(t=>t.scheduledFor&&new Date(t.scheduledFor+'T00:00:00')>today);
+  // Show upcoming count in badge
+  const totalActive=pending.length+upcoming.length;
   const badge=document.getElementById('tasks-badge');
-  if(badge){ badge.textContent=pending.length; badge.style.display=pending.length>0?'inline-flex':'none'; }
+  if(badge){ badge.textContent=totalActive; badge.style.display=totalActive>0?'inline-flex':'none'; }
   const list=document.getElementById('tasks-list');
   if(!pending.length){
-    list.innerHTML='<div style="color:var(--text-muted);text-align:center;padding:32px 0">No pending tasks.</div>';
+    const upcomingHtml=upcoming.length?`<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:10px;">📅 Upcoming (${upcoming.length})</div>
+      ${upcoming.sort((a,b)=>a.scheduledFor.localeCompare(b.scheduledFor)).map(t=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;opacity:.75;">
+        <div style="font-weight:600;font-size:12px;">${esc(t.title)}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Scheduled: ${t.scheduledFor}</div>
+        ${t.propertyAddress?`<div style="font-size:11px;background:var(--bg);border-radius:4px;padding:2px 6px;margin-top:4px;display:inline-block;">📍 ${esc(t.propertyAddress)}</div>`:''}
+      </div>`).join('')}
+    </div>`:'';
+    list.innerHTML='<div style="color:var(--text-muted);text-align:center;padding:24px 0">No active tasks.</div>'+upcomingHtml;
     return;
   }
   list.innerHTML=pending.map(t=>`
@@ -2300,7 +3028,15 @@ function renderTasksPanel(){
       </div>
       ${t.propertyAddress?`<div class="task-prop-tag">📍 ${esc(t.propertyAddress)}</div>`:''}
       ${t.attachmentUrl?`<a href="${t.attachmentUrl}" target="_blank" rel="noopener" class="btn btn-primary btn-sm" style="margin-top:10px;display:inline-flex;gap:6px;">📄 Download PSA Contract</a>`:''}
-    </div>`).join('');
+    </div>`).join('')
+  + (upcoming.length?`<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:10px;">📅 Scheduled Upcoming (${upcoming.length})</div>
+      ${upcoming.sort((a,b)=>a.scheduledFor.localeCompare(b.scheduledFor)).map(t=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;opacity:.75;">
+        <div style="font-weight:600;font-size:12px;">${esc(t.title)}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Fires on: ${t.scheduledFor}</div>
+        ${t.propertyAddress?`<div style="font-size:11px;background:var(--bg);border-radius:4px;padding:2px 6px;margin-top:4px;display:inline-block;">📍 ${esc(t.propertyAddress)}</div>`:''}
+      </div>`).join('')}
+    </div>`:'');
 
   // ✅ Complete → disappear + append to property notes
   list.querySelectorAll('.task-check').forEach(cb=>{
@@ -2518,6 +3254,20 @@ function matchStage(str){
   return 'possible';
 }
 
+function _normalizeAddr(a){
+  return (a||'').toLowerCase().trim()
+    .replace(/[.,#]/g,'')
+    .replace(/\bstreet\b/g,'st').replace(/\bavenue\b/g,'ave').replace(/\bboulevard\b/g,'blvd')
+    .replace(/\bdrive\b/g,'dr').replace(/\broad\b/g,'rd').replace(/\blane\b/g,'ln')
+    .replace(/\bcourt\b/g,'ct').replace(/\bcircle\b/g,'cir').replace(/\bplace\b/g,'pl')
+    .replace(/\bterrace\b/g,'ter').replace(/\btrail\b/g,'trl').replace(/\bparkway\b/g,'pkwy')
+    .replace(/\bhighway\b/g,'hwy')
+    .replace(/\bnortheast\b/g,'ne').replace(/\bnorthwest\b/g,'nw')
+    .replace(/\bsoutheast\b/g,'se').replace(/\bsouthwest\b/g,'sw')
+    .replace(/\bnorth\b/g,'n').replace(/\bsouth\b/g,'s').replace(/\beast\b/g,'e').replace(/\bwest\b/g,'w')
+    .replace(/\s+/g,' ').trim();
+}
+
 async function executeImportWithMapping(){
   if(!_pendingImport) return;
   const {rows}=_pendingImport;
@@ -2526,38 +3276,81 @@ async function executeImportWithMapping(){
   if(!mapping.address){ alert('Address column is required'); return; }
   closeModal('col-mapper-modal');
   _pendingImport=null;
-  const batch=db.batch(); let added=0,updated=0;
+
+  // Build address lookup from existing properties for fast duplicate detection
+  const addrIndex={};
+  Object.values(allProperties).forEach(p=>{ if(p.address) addrIndex[_normalizeAddr(p.address)]=p.id; });
+
+  let batch=db.batch(); let added=0,updated=0,skipped=0,opCount=0;
+
+  const flush=async()=>{ await batch.commit(); batch=db.batch(); opCount=0; };
+
   for(const row of rows){
     const addr=(row[mapping.address]||'').trim();
-    if(!addr) continue;
-    const d={
-      address:           addr,
-      city:              (row[mapping.city]||'').trim(),
-      state:             (row[mapping.state]||'').trim().toUpperCase().substring(0,2),
-      price:             parseFloat(row[mapping.price])||null,
-      size:              (row[mapping.size]||'').trim(),
-      parkingStalls:     parseInt(row[mapping.parkingStalls])||null,
-      zoning:            (row[mapping.zoning]||'').trim(),
-      stage:             matchStage(row[mapping.stage]),
-      listingBroker:     (row[mapping.listingBroker]||'').trim(),
-      brokerPhone:       (row[mapping.brokerPhone]||'').trim(),
-      offeredTerms:      (row[mapping.offeredTerms]||'').trim(),
-      dueDiligenceDate:  (row[mapping.dueDiligenceDate]||'').trim(),
-      closingTargetDate: (row[mapping.closingTargetDate]||'').trim(),
-      feedbackSummary:   (row[mapping.feedbackSummary]||'').trim(),
-      stallsNeeded:      parseInt(row[mapping.stallsNeeded])||null,
-      notes:             (row[mapping.notes]||'').trim(),
-      publicVisible:     mapping.publicVisible ? (row[mapping.publicVisible]||'').toLowerCase()!=='false' : true,
-      updatedAt:         firebase.firestore.FieldValue.serverTimestamp()
-    };
-    const existId=Object.keys(allProperties).find(id=>
-      (allProperties[id].address||'').toLowerCase()===addr.toLowerCase()
-    );
-    if(existId){ batch.update(db.collection('properties').doc(existId),d); updated++; }
-    else{ d.createdAt=firebase.firestore.FieldValue.serverTimestamp(); batch.set(db.collection('properties').doc(),d); added++; }
+    if(!addr){ skipped++; continue; }
+
+    const existId=addrIndex[_normalizeAddr(addr)];
+
+    if(existId){
+      // UPDATE — only write fields that are explicitly mapped and have a value
+      // Never reset stage, documents, or other critical fields unless the column is mapped
+      const u={ updatedAt:firebase.firestore.FieldValue.serverTimestamp() };
+      const set=(key,val)=>{ if(val!==null&&val!==''&&val!==undefined) u[key]=val; };
+      set('address', addr);
+      if(mapping.city)              set('city',          (row[mapping.city]||'').trim());
+      if(mapping.state)             set('state',         (row[mapping.state]||'').trim().toUpperCase().substring(0,2));
+      if(mapping.price)             set('price',         parseFloat(row[mapping.price])||null);
+      if(mapping.size)              set('size',          (row[mapping.size]||'').trim());
+      if(mapping.parkingStalls)     set('parkingStalls', parseInt(row[mapping.parkingStalls])||null);
+      if(mapping.zoning)            set('zoning',        (row[mapping.zoning]||'').trim());
+      if(mapping.stage&&row[mapping.stage]) set('stage', matchStage(row[mapping.stage]));
+      if(mapping.listingBroker)     set('listingBroker', (row[mapping.listingBroker]||'').trim());
+      if(mapping.brokerPhone)       set('brokerPhone',   (row[mapping.brokerPhone]||'').trim());
+      if(mapping.offeredTerms)      set('offeredTerms',  (row[mapping.offeredTerms]||'').trim());
+      if(mapping.dueDiligenceDate)  set('dueDiligenceDate',  (row[mapping.dueDiligenceDate]||'').trim());
+      if(mapping.closingTargetDate) set('closingTargetDate', (row[mapping.closingTargetDate]||'').trim());
+      if(mapping.feedbackSummary)   set('feedbackSummary',   (row[mapping.feedbackSummary]||'').trim());
+      if(mapping.stallsNeeded)      set('stallsNeeded',  parseInt(row[mapping.stallsNeeded])||null);
+      if(mapping.notes)             set('notes',         (row[mapping.notes]||'').trim());
+      if(mapping.publicVisible)     u.publicVisible=(row[mapping.publicVisible]||'').toLowerCase()!=='false';
+      batch.update(db.collection('properties').doc(existId),u);
+      updated++;
+    } else {
+      // NEW property — full object with safe defaults
+      const d={
+        address:addr,
+        city:              (row[mapping.city]||'').trim(),
+        state:             (row[mapping.state]||'').trim().toUpperCase().substring(0,2),
+        price:             parseFloat(row[mapping.price])||null,
+        size:              (row[mapping.size]||'').trim(),
+        parkingStalls:     parseInt(row[mapping.parkingStalls])||null,
+        zoning:            (row[mapping.zoning]||'').trim(),
+        stage:             matchStage(row[mapping.stage]),
+        listingBroker:     (row[mapping.listingBroker]||'').trim(),
+        brokerPhone:       (row[mapping.brokerPhone]||'').trim(),
+        offeredTerms:      (row[mapping.offeredTerms]||'').trim(),
+        dueDiligenceDate:  (row[mapping.dueDiligenceDate]||'').trim(),
+        closingTargetDate: (row[mapping.closingTargetDate]||'').trim(),
+        feedbackSummary:   (row[mapping.feedbackSummary]||'').trim(),
+        stallsNeeded:      parseInt(row[mapping.stallsNeeded])||null,
+        notes:             (row[mapping.notes]||'').trim(),
+        publicVisible:     mapping.publicVisible?(row[mapping.publicVisible]||'').toLowerCase()!=='false':true,
+        createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+      };
+      batch.set(db.collection('properties').doc(),d);
+      // Add to local index so duplicate rows in same import are caught
+      addrIndex[_normalizeAddr(addr)]='pending';
+      added++;
+    }
+
+    opCount++;
+    if(opCount>=400){ await flush(); } // stay under Firestore's 500-op batch limit
   }
+
   await batch.commit();
-  toast('📥','Import complete',`${added} added · ${updated} updated`);
+  const parts=[added?`${added} added`:'', updated?`${updated} updated`:'', skipped?`${skipped} skipped`:''].filter(Boolean);
+  toast('📥','Import complete',parts.join(' · '));
 }
 
 document.getElementById('btn-confirm-import').addEventListener('click', executeImportWithMapping);
@@ -2578,7 +3371,11 @@ async function handleImportFile(file){
 // ── MODALS UTILITY ───────────────────────────────────────────
 function closeModal(id){ document.getElementById(id).classList.add('hidden'); }
 document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>closeModal(b.dataset.close)));
-document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{ if(e.target===o) closeModal(o.id); }));
+document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{
+  if(e.target!==o) return;
+  if(o.id==='dead-prompt-modal'){ pendingDeadMove=null; closeModal(o.id); renderKanban(); return; }
+  closeModal(o.id);
+}));
 
 // ── TOAST ─────────────────────────────────────────────────────
 function toast(icon,title,body='',dur=4000){
@@ -2641,7 +3438,7 @@ async function renderMapView(canvasId='map-canvas', statusId='map-status'){
       coords=await geocodeAddress(prop.address,prop.city,prop.state);
       if(coords){
         _geocodeCache[prop.id]=coords;
-        if(currentUser) db.collection('properties').doc(prop.id).update({lat:coords.lat,lng:coords.lng}).catch(()=>{});
+        db.collection('properties').doc(prop.id).update({lat:coords.lat,lng:coords.lng}).catch(()=>{});
       }
     }
     if(!coords) continue;
@@ -2700,6 +3497,136 @@ function _addMapLegend(mapInstance){
 
 // ── UTILS ────────────────────────────────────────────────────
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── HISTORY LOGGING ──────────────────────────────────────────
+async function logHistory(propId, text, color=null){
+  const entry = { text, ts: new Date().toISOString(), ...(color?{color}:{}) };
+  try{
+    await db.collection('properties').doc(propId).update({
+      history: firebase.firestore.FieldValue.arrayUnion(entry),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    if(allProperties[propId]){
+      allProperties[propId].history = [...(allProperties[propId].history||[]), entry];
+    }
+  }catch(e){ console.warn('History log failed:',e); }
+}
+
+// ── CARD DETAIL PANEL ────────────────────────────────────────
+let _cdpPropId = null;
+let _cdpNotesTimer = null;
+
+function openCardPanel(propId){
+  const p = allProperties[propId];
+  if(!p) return;
+  _cdpPropId = propId;
+  const panel = document.getElementById('card-detail-panel');
+
+  // Header
+  document.getElementById('cdp-title').textContent = p.address || 'Property';
+  document.getElementById('cdp-meta').textContent = [p.city, p.state].filter(Boolean).join(', ') + (p.zoning ? ' · ' + p.zoning : '');
+  document.getElementById('cdp-edit-btn').onclick = () => { closeCardPanel(); openPropertyModal(propId); };
+
+  // Key fields
+  const fields = [
+    ['Asking Price', p.price ? '$'+Number(p.price).toLocaleString() : null],
+    ['Size', p.size || null],
+    ['Zoning', p.zoning || null],
+    ['Stalls', p.parkingStalls || null],
+    ['County', p.county || null],
+    ['Power Co', p.powerCompany || null],
+    ['Broker', p.listingBroker || null],
+    ['Broker Ph', p.brokerPhone || null],
+    ['DD Date', p.dueDiligenceDate || null],
+    ['Close Date', p.closingTargetDate || null],
+  ].filter(([,v]) => v);
+  const fieldsEl = document.getElementById('cdp-fields');
+  fieldsEl.innerHTML = fields.length
+    ? fields.map(([l,v]) => `<div class="cdp-field"><div class="cdp-field-label">${esc(l)}</div><div class="cdp-field-val">${esc(String(v))}</div></div>`).join('')
+    : '<div style="color:var(--text-muted);font-size:12px;">No fields set yet — click Edit to add details.</div>';
+
+  // Notes — live autosave
+  const notesEl = document.getElementById('cdp-notes');
+  notesEl.value = p.notes || '';
+  notesEl.oninput = () => {
+    const savingEl = document.getElementById('cdp-notes-saving');
+    if(savingEl) savingEl.textContent = 'saving…';
+    clearTimeout(_cdpNotesTimer);
+    _cdpNotesTimer = setTimeout(async () => {
+      await savePropField(propId, 'notes', notesEl.value.trim());
+      if(savingEl) { savingEl.textContent = '✓ saved'; setTimeout(()=>{ if(savingEl) savingEl.textContent=''; }, 2000); }
+    }, 800);
+  };
+
+  // Documents
+  renderCdpDocs(propId);
+
+  // Doc upload
+  const docInput = document.getElementById('cdp-doc-input');
+  docInput.onchange = async e => {
+    const file = e.target.files[0]; if(!file) return;
+    e.target.value = '';
+    await uploadPropertyDoc(propId, file);
+    renderCdpDocs(propId);
+  };
+
+  // Activity log
+  renderCdpActivity(p);
+
+  panel.classList.add('open');
+}
+
+function renderCdpDocs(propId){
+  const p = allProperties[propId]; if(!p) return;
+  const docs = p.documents || [];
+  const el = document.getElementById('cdp-docs');
+  el.innerHTML = docs.length
+    ? docs.map(d => `<a href="${d.url}" target="_blank" rel="noopener" class="card-doc-chip" style="font-size:11px;padding:3px 9px;" title="${esc(d.name)}">📄 ${esc(d.name.length>20?d.name.substring(0,20)+'…':d.name)}</a>`).join('')
+    : '<span style="color:var(--text-muted);font-size:12px;">No documents yet</span>';
+}
+
+function renderCdpActivity(p){
+  const el = document.getElementById('cdp-activity');
+  const items = [];
+
+  // Seed events from property timestamps
+  if(p.createdAt) items.push({ date: p.createdAt.toDate?.() || new Date(p.createdAt), text: 'Property added' });
+  if(p.deadAt)    items.push({ date: p.deadAt.toDate?.()   || new Date(p.deadAt),   text: 'Marked as Dead', color:'#f87171' });
+
+  // Rich history log entries (written by logHistory)
+  (p.history||[]).forEach(h => {
+    const date = h.ts ? new Date(h.ts) : null;
+    items.push({ date, text: h.text, color: h.color||null });
+  });
+
+  // Fallback: if no history entries yet, show last-updated
+  if(!(p.history||[]).length && p.updatedAt && p.createdAt && p.updatedAt.seconds !== p.createdAt.seconds)
+    items.push({ date: p.updatedAt.toDate?.() || new Date(p.updatedAt), text: 'Last updated' });
+
+  items.sort((a,b) => (b.date?.getTime()||0)-(a.date?.getTime()||0));
+
+  el.innerHTML = items.length
+    ? items.map(i => {
+        const dateStr = i.date
+          ? i.date.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+            + ' ' + i.date.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})
+          : '';
+        return `<div class="cdp-activity-item">
+          <div class="cdp-activity-dot" style="${i.color?'background:'+i.color:''}"></div>
+          <div>
+            <div style="color:var(--text);font-size:12px;">${esc(i.text)}</div>
+            ${dateStr?`<div style="font-size:11px;color:var(--text-muted);">${esc(dateStr)}</div>`:''}
+          </div>
+        </div>`;
+      }).join('')
+    : '<div style="color:var(--text-muted);font-size:12px;">No activity yet</div>';
+}
+
+function closeCardPanel(){
+  document.getElementById('card-detail-panel').classList.remove('open');
+  _cdpPropId = null;
+}
+document.getElementById('cdp-close-btn').addEventListener('click', closeCardPanel);
 </script>
 
 <!--
@@ -2714,7 +3641,7 @@ service cloud.firestore {
       allow create, delete: if request.auth != null;
       allow update: if request.auth != null ||
         request.resource.data.diff(resource.data)
-          .affectedKeys().hasOnly(['feedbackSummary','stallsNeeded','updatedAt']);
+          .affectedKeys().hasOnly(['feedbackSummary','stallsNeeded','updatedAt','lat','lng','history']);
     }
     match /tasks/{taskId} {
       allow read, write: if request.auth != null;
