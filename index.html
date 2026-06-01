@@ -15,18 +15,14 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root {
-  --bg:#0f1117; --surface:#181c27; --surface2:#1e2334; --border:#2a3148;
-  --text:#e4e8f0; --text-muted:#7b87a0; --accent:#4f7cff; --accent-h:#6b93ff;
-  --radius:10px; --shadow:0 4px 24px rgba(0,0,0,.4);
+  --bg:#f5f7fa; --surface:#ffffff; --surface2:#eef1f6; --border:#e2e5ec;
+  --text:#1a1f36; --text-muted:#6b7280; --accent:#4f7cff; --accent-h:#6b93ff;
+  --radius:10px; --shadow:0 4px 24px rgba(0,0,0,.08);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;font-family:'Inter',system-ui,sans-serif;color:var(--text);font-size:14px;}
 body{
-  background:
-    linear-gradient(rgba(0,0,0,.35) 0%,rgba(0,0,0,.1) 20%,rgba(0,0,0,.1) 80%,rgba(0,0,0,.35) 100%),
-    url('https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Tesla_Cybercab_at_We_Robot_Event.jpg/1280px-Tesla_Cybercab_at_We_Robot_Event.jpg')
-    center 32%/cover no-repeat fixed;
-  background-color:#0f1117;
+  background-color:#f5f7fa;
 }
 button{cursor:pointer;font-family:inherit;font-size:13px;}
 input,select,textarea{font-family:inherit;font-size:13px;}
@@ -47,7 +43,14 @@ a{color:var(--accent);text-decoration:none;}
 .btn-google svg{width:20px;height:20px;flex-shrink:0;}
 
 #view-public,#view-admin{display:none;flex-direction:column;min-height:100vh;}
-.topbar{display:flex;align-items:center;gap:12px;background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:56px;flex-shrink:0;}
+.topbar{display:flex;align-items:center;gap:12px;background:#0f1117;border-bottom:2px solid rgba(200,155,20,.5);padding:0 20px;height:56px;flex-shrink:0;}
+.topbar .btn-ghost{color:#9aa5be;border-color:rgba(255,255,255,.15);}
+.topbar .btn-ghost:hover{color:#e4e8f0;background:rgba(255,255,255,.08);}
+.topbar .btn-secondary{background:rgba(255,255,255,.08);color:#e4e8f0;border-color:rgba(255,255,255,.15);}
+.topbar .btn-primary{background:var(--accent);color:#fff;}
+.topbar .view-pills{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.1);}
+.topbar .view-pill{color:#9aa5be;}
+.topbar .view-pill.active{background:rgba(255,255,255,.1);color:#e4e8f0;}
 .topbar-logo-img{height:28px;display:block;}
 .topbar-tag{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:3px 8px;border-radius:4px;}
 .tag-public{background:rgba(79,124,255,.18);color:var(--accent);}
