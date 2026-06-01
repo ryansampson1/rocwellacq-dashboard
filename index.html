@@ -123,8 +123,8 @@ table.data-table tbody tr:hover{background:var(--surface2);}
 .empty-state .empty-icon{font-size:36px;margin-bottom:10px;}
 .empty-state h3{font-size:16px;color:var(--text);margin-bottom:6px;}
 
-#kanban-board{display:flex;gap:14px;align-items:flex-start;overflow-x:auto;padding-bottom:8px;min-height:500px;}
-.kanban-col{flex:0 0 262px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);display:flex;flex-direction:column;max-height:calc(100vh - 160px);}
+#kanban-board{display:flex;gap:14px;align-items:stretch;overflow-x:auto;overflow-y:hidden;flex:1;min-height:0;}
+.kanban-col{flex:0 0 262px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);display:flex;flex-direction:column;}
 .kanban-col-header{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
 .kanban-col-title{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;}
 .stage-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
@@ -371,7 +371,7 @@ td.editable input{background:var(--bg);border:1px solid var(--accent);border-rad
     </div>
   </nav>
 
-  <div class="content" id="admin-kanban-content"><div id="kanban-board"></div></div>
+  <div class="content" id="admin-kanban-content" style="display:flex;flex-direction:column;overflow:hidden;"><div id="kanban-board"></div></div>
 
   <div class="content" id="admin-spreadsheet-content" style="display:none;">
     <div class="admin-table-controls">
