@@ -231,7 +231,7 @@ td.editable input{background:var(--bg);border:1px solid var(--accent);border-rad
 .toast-body{color:var(--text-muted);font-size:12px;}
 .notif-badge{background:#ef4444;color:#fff;font-size:10px;font-weight:800;width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;}
 
-#card-detail-panel{pointer-events:none;}
+#card-detail-panel{transform:translateX(100%);pointer-events:none;}
 #card-detail-panel.open{transform:translateX(0);pointer-events:all;}
 #tasks-panel{pointer-events:none;}
 #tasks-panel.open{pointer-events:all;}
@@ -444,7 +444,7 @@ td.editable input{background:var(--bg);border:1px solid var(--accent);border-rad
 </div>
 
 <!-- Card Detail Panel -->
-<div id="card-detail-panel" style="position:fixed;right:0;top:0;bottom:0;width:420px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;z-index:201;transform:translateX(100%);transition:transform .25s ease;box-shadow:-4px 0 24px rgba(0,0,0,.4);">
+<div id="card-detail-panel" style="position:fixed;right:0;top:0;bottom:0;width:420px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;z-index:201;transition:transform .25s ease;box-shadow:-4px 0 24px rgba(0,0,0,.4);">
   <div class="panel-header">
     <div style="min-width:0;">
       <h3 id="cdp-title" style="font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></h3>
