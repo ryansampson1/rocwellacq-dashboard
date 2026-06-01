@@ -1727,7 +1727,7 @@ function buildCard(prop){
 
 let draggingId=null;
 function onDragStart(e){ draggingId=e.currentTarget.dataset.id; e.currentTarget.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; }
-function onDragEnd(e){ e.currentTarget.classList.remove('dragging'); }
+function onDragEnd(e){ e.currentTarget.classList.remove('dragging'); draggingId=null; }
 async function onDrop(e){
   e.preventDefault();
   document.querySelectorAll('.kanban-cards').forEach(c=>c.classList.remove('drag-over'));
