@@ -129,13 +129,10 @@ table.data-table tbody tr:hover{background:var(--surface2);}
 .kanban-cards{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:80px;}
 .kanban-cards.drag-over{background:rgba(79,124,255,.06);border-radius:6px;}
 
-.prop-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 12px 12px 28px;cursor:pointer;transition:box-shadow .15s;position:relative;}
+.prop-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;cursor:grab;transition:box-shadow .15s;position:relative;}
 .prop-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.4);}
-.prop-card.dragging{opacity:.5;}
+.prop-card.dragging{opacity:.5;cursor:grabbing;}
 .prop-card-address{font-weight:700;font-size:13px;margin-bottom:3px;padding-right:22px;}
-.drag-handle{position:absolute;left:0;top:0;bottom:0;width:22px;display:flex;align-items:center;justify-content:center;cursor:grab;color:var(--text-muted);font-size:13px;opacity:.4;border-radius:8px 0 0 8px;}
-.drag-handle:hover{opacity:.9;background:rgba(255,255,255,.04);}
-.drag-handle.dragging{cursor:grabbing;}
 .prop-card-meta{font-size:11px;color:var(--text-muted);margin-bottom:5px;}
 .prop-card .card-menu-btn{position:absolute;top:8px;right:8px;background:none;border:none;color:var(--text-muted);padding:2px 6px;border-radius:4px;opacity:0;transition:opacity .15s;}
 .prop-card:hover .card-menu-btn{opacity:1;}
@@ -1652,7 +1649,7 @@ function buildCard(prop){
   const lps     = rent&&prop.stallsNeeded ? Math.round(rent/prop.stallsNeeded) : null;
   const fbOpt   = FB_MAP[prop.feedbackSummary||''];
   const card    = document.createElement('div');
-  card.className='prop-card'; card.dataset.id=prop.id; // draggable moved to .drag-handle
+  card.className='prop-card'; card.draggable=true; card.dataset.id=prop.id;
 
   let extra='';
   if(prop.listingBroker||prop.brokerPhone)
@@ -1672,7 +1669,6 @@ function buildCard(prop){
   const moreChip = docs.length>3?`<span class="card-doc-more">+${docs.length-3} more</span>`:'';
 
   card.innerHTML=`
-    <div class="drag-handle" draggable="true" data-id="${prop.id}" title="Drag to move column">⠿</div>
     <button class="card-del-btn" data-id="${prop.id}" title="Delete property">🗑</button>
     <button class="card-menu-btn" data-id="${prop.id}">✏️</button>
     <div class="prop-card-address">${esc(prop.address)}</div>
@@ -1697,14 +1693,8 @@ function buildCard(prop){
       <input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none" class="card-file-input">
     </div>`;
 
-  // Drag is handled by .drag-handle only — card body is a normal clickable element
-  const handle = card.querySelector('.drag-handle');
-  handle.addEventListener('dragstart', onDragStart);
-  handle.addEventListener('dragend', onDragEnd);
-  card.addEventListener('click', e=>{
-    if(e.target.closest('.drag-handle,.card-menu-btn,.card-del-btn,.card-upload-btn,.card-file-input,.card-doc-chip')) return;
-    openCardPanel(prop.id);
-  });
+  card.addEventListener('dragstart',onDragStart);
+  card.addEventListener('dragend',onDragEnd);
   card.querySelector('.card-menu-btn').addEventListener('click',e=>{e.stopPropagation();openPropertyModal(prop.id);});
   card.querySelector('.card-del-btn').addEventListener('click',e=>{e.stopPropagation();deleteProperty(prop.id);});
 
@@ -1725,19 +1715,8 @@ function buildCard(prop){
 }
 
 let draggingId=null;
-function onDragStart(e){
-  draggingId=e.currentTarget.dataset.id;
-  const card=e.currentTarget.closest('.prop-card')||e.currentTarget;
-  card.classList.add('dragging');
-  e.currentTarget.classList.add('dragging');
-  e.dataTransfer.effectAllowed='move';
-}
-function onDragEnd(e){
-  const card=e.currentTarget.closest('.prop-card')||e.currentTarget;
-  card.classList.remove('dragging');
-  e.currentTarget.classList.remove('dragging');
-  draggingId=null;
-}
+function onDragStart(e){ draggingId=e.currentTarget.dataset.id; e.currentTarget.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; }
+function onDragEnd(e){ e.currentTarget.classList.remove('dragging'); draggingId=null; }
 async function onDrop(e){
   e.preventDefault();
   document.querySelectorAll('.kanban-cards').forEach(c=>c.classList.remove('drag-over'));
@@ -1823,7 +1802,7 @@ function renderAdminTable(){
     const lps  = rent&&p.stallsNeeded     ? Math.round(rent/p.stallsNeeded)     : null;
     const fbOpt= FB_MAP[p.feedbackSummary||''];
     const fbChip= fbOpt&&fbOpt.chip?`<span class="fb-chip ${fbOpt.chip}">${fbOpt.label}</span>`:`<span style="color:var(--text-muted)">—</span>`;
-    return `<tr data-propid="${p.id}" style="cursor:pointer;" title="Click to open property panel">
+    return `<tr onclick="if(!event.target.closest('button,select,input,.editable'))openCardPanel('${p.id}')" style="cursor:pointer;">
       <td class="editable" data-id="${p.id}" data-field="address">${esc(p.address||'')}</td>
       <td class="editable" data-id="${p.id}" data-field="city">${esc(p.city||'')}</td>
       <td class="editable" data-id="${p.id}" data-field="state">${esc(p.state||'')}</td>
@@ -1873,15 +1852,6 @@ function renderAdminTable(){
   });
   tbody.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();openPropertyModal(b.dataset.edit);}));
   tbody.querySelectorAll('[data-delete]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();deleteProperty(b.dataset.delete);}));
-  // Row click → open card detail panel
-  tbody.querySelectorAll('tr[data-propid]').forEach(tr=>{
-    tr.addEventListener('mousedown', e=>{ tr._mdT=Date.now(); });
-    tr.addEventListener('mouseup', e=>{
-      if(!tr._mdT || Date.now()-tr._mdT>300) return;
-      if(e.target.closest('button,select,input,.editable')) return;
-      openCardPanel(tr.dataset.propid);
-    });
-  });
 }
 document.getElementById('admin-search')?.addEventListener('input',renderAdminTable);
 document.getElementById('admin-stage-filter')?.addEventListener('change',renderAdminTable);
