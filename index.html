@@ -677,7 +677,7 @@ const PSA_FIELD_DEFS = [
   { key:'rngVal',        label:'RNG',                 propField:'rngVal',      fmt:null, page:0 },
   { key:'county',        label:'County',              propField:'county',      fmt:null, page:0 },
   { key:'purchasePrice', label:'Purchase Price',      propField:'price',       fmt:'$',  page:0 },
-  { key:'fee',           label:'Fee (Additional Terms)', propField:'feeRate',  fmt:'%→$', page:6 },
+  { key:'fee',           label:'Fee (Additional Terms)', propField:'feeRate',  fmt:'%',   page:6 },
 ];
 
 // Default positions — adjust in Settings → PSA Field Positions
@@ -2007,10 +2007,9 @@ async function _buildPSABytes(prop){
   PSA_FIELD_DEFS.forEach(f=>{
     const pos=psaPositions[f.key]; if(!pos) return;
     let val;
-    if(f.fmt==='%→$'){
-      // Fee: percentage of purchase price
-      const rate=prop[f.propField]; if(!rate||!prop.price) return;
-      val='$'+Math.round(Number(prop.price)*Number(rate)/100).toLocaleString();
+    if(f.fmt==='%'){
+      const rate=prop[f.propField]; if(!rate&&rate!==0) return;
+      val=Number(rate)+'%';
     } else {
       val=prop[f.propField]; if(!val&&val!==0) return;
       if(f.fmt==='$') val='$'+Number(val).toLocaleString();
