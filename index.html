@@ -1695,15 +1695,22 @@ function buildCard(prop){
 
   card.addEventListener('dragstart',onDragStart);
   card.addEventListener('dragend',onDragEnd);
-  // Use mousedown+mouseup instead of click — draggable elements suppress click events in some browsers
+  // Two-path click detection for draggable cards:
+  // Path A: clean click (no drag) — Chrome fires 'click' normally
+  // Path B: accidental micro-drag — Chrome fires 'dragend' but suppresses 'click'; detect via timing
   let _mdTime=0;
   card.addEventListener('mousedown', e=>{
     if(e.target.closest('.card-menu-btn,.card-del-btn,.card-upload-btn,.card-file-input,.card-doc-chip')) return;
     _mdTime=Date.now();
   });
-  card.addEventListener('mouseup', e=>{
+  // Path A
+  card.addEventListener('click', e=>{
     if(e.target.closest('.card-menu-btn,.card-del-btn,.card-upload-btn,.card-file-input,.card-doc-chip')) return;
-    if(_mdTime && Date.now()-_mdTime < 300 && !draggingId) openCardPanel(prop.id);
+    if(_mdTime){ openCardPanel(prop.id); _mdTime=0; }
+  });
+  // Path B — dragend within 400ms = was a tap, not a real drag
+  card.addEventListener('dragend', e=>{
+    if(_mdTime && Date.now()-_mdTime < 400) openCardPanel(prop.id);
     _mdTime=0;
   });
   card.querySelector('.card-menu-btn').addEventListener('click',e=>{e.stopPropagation();openPropertyModal(prop.id);});
