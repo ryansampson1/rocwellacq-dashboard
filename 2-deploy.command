@@ -17,10 +17,9 @@ echo "Files changed:"
 echo "$CHANGED"
 echo ""
 
-git merge --abort 2>/dev/null    # clear any stuck merge state
-git checkout -- index.html 2>/dev/null  # discard any conflict markers
+git merge --abort 2>/dev/null
 git add -A
-git commit -m "Update — $(date '+%Y-%m-%d %H:%M')"
+git commit -m "Update — $(date '+%Y-%m-%d %H:%M')" 2>/dev/null || true
 git push --force origin main 2>&1
 
 echo ""

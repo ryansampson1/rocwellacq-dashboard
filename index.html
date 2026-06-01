@@ -7,7 +7,11 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
 <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root {
@@ -140,6 +144,13 @@ table.data-table tbody tr:hover{background:var(--surface2);}
 .card-offer-terms{font-size:11px;color:#fb923c;margin-top:3px;}
 .card-dates{font-size:11px;color:#fbbf24;margin-top:3px;}
 .card-footer{display:flex;align-items:center;justify-content:space-between;margin-top:7px;font-size:11px;}
+/* Card document chips */
+.card-docs-row{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px;align-items:center;border-top:1px solid rgba(42,49,72,.5);padding-top:6px;}
+.card-doc-chip{font-size:10px;font-weight:600;background:rgba(79,124,255,.1);color:var(--accent);border:1px solid rgba(79,124,255,.25);border-radius:4px;padding:2px 7px;text-decoration:none;white-space:nowrap;max-width:130px;overflow:hidden;text-overflow:ellipsis;display:inline-block;}
+.card-doc-chip:hover{background:rgba(79,124,255,.22);}
+.card-upload-btn{background:none;border:1px solid var(--border);border-radius:4px;color:var(--text-muted);font-size:11px;padding:2px 7px;cursor:pointer;transition:all .15s;flex-shrink:0;}
+.card-upload-btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(79,124,255,.08);}
+.card-doc-more{font-size:10px;color:var(--text-muted);padding:2px 4px;}
 
 .admin-table-controls{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
 .search-box{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 12px;flex:1;max-width:320px;}
@@ -170,13 +181,13 @@ td.editable input{background:var(--bg);border:1px solid var(--accent);border-rad
 
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:500;padding:20px;}
 .modal-overlay.hidden{display:none;}
-.modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:580px;box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:580px;box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;max-height:94vh;}
 .modal-sm{max-width:400px;}
 .modal-header{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
 .modal-header h3{font-size:16px;font-weight:700;}
 .modal-close{background:none;border:none;color:var(--text-muted);font-size:22px;line-height:1;padding:4px;border-radius:4px;}
 .modal-close:hover{color:var(--text);background:var(--surface2);}
-.modal-body{padding:22px;overflow-y:auto;max-height:72vh;}
+.modal-body{padding:22px;overflow-y:auto;flex:1 1 auto;min-height:0;}
 .modal-footer{padding:16px 22px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;}
 
 .form-group{margin-bottom:13px;}
@@ -201,6 +212,12 @@ td.editable input{background:var(--bg);border:1px solid var(--accent);border-rad
 
 .chip-grace{background:rgba(249,115,22,.15);color:#fb923c;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;}
 .chip-archived{background:rgba(107,114,128,.15);color:#9ca3af;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;}
+/* PSA visual editor */
+.psa-drag-label{position:absolute;background:rgba(220,38,38,.9);color:#fff;padding:3px 9px;border-radius:4px;font-size:10px;font-weight:700;cursor:grab;user-select:none;white-space:nowrap;z-index:10;box-shadow:0 2px 8px rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.3);line-height:1.6;transition:box-shadow .1s;}
+.psa-drag-label:hover{box-shadow:0 3px 12px rgba(0,0,0,.7);}
+.psa-drag-label.dragging{cursor:grabbing;z-index:20;box-shadow:0 8px 24px rgba(0,0,0,.7);transform:scale(1.05);}
+#psa-editor-coords{position:sticky;bottom:0;background:rgba(0,0,0,.75);color:#fff;padding:5px 14px;font-size:11px;font-family:monospace;z-index:30;text-align:center;letter-spacing:.5px;pointer-events:none;}
+#psa-canvas-wrap{position:relative;overflow:auto;background:#6b7280;flex:1;}
 
 .toast-container{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:9999;}
 .toast{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;min-width:280px;box-shadow:var(--shadow);display:flex;gap:10px;align-items:flex-start;animation:slideIn .3s ease;font-size:13px;}
@@ -213,6 +230,11 @@ td.editable input{background:var(--bg);border:1px solid var(--accent);border-rad
 .notif-badge{background:#ef4444;color:#fff;font-size:10px;font-weight:800;width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;}
 
 @media(max-width:640px){.kanban-col{flex:0 0 220px;}#tasks-panel{width:100%;}.form-row{grid-template-columns:1fr;}}
+/* Leaflet popup dark theme */
+.leaflet-popup-content-wrapper{background:var(--surface)!important;color:var(--text)!important;border:1px solid var(--border)!important;box-shadow:0 4px 20px rgba(0,0,0,.5)!important;}
+.leaflet-popup-tip{background:var(--surface)!important;}
+.leaflet-popup-close-button{color:var(--text-muted)!important;}
+#map-canvas{height:580px;border-radius:10px;border:1px solid var(--border);}
 </style>
 </head>
 <body>
@@ -251,32 +273,54 @@ td.editable input{background:var(--bg);border:1px solid var(--accent);border-rad
       <div><h2>Site Prospects</h2><p>Review available properties and share your feedback.</p></div>
     </div>
     <div class="public-tabs">
-      <button class="public-tab-btn active" data-tab="active">Active Prospects <span class="public-tab-count" id="tab-count-active">0</span></button>
+      <button class="public-tab-btn active" data-tab="consideration">Sites for Consideration <span class="public-tab-count" id="tab-count-consideration">0</span></button>
+      <button class="public-tab-btn" data-tab="pursuing">Currently Pursuing <span class="public-tab-count" id="tab-count-pursuing">0</span></button>
       <button class="public-tab-btn" data-tab="passed">Passed on Sites <span class="public-tab-count" id="tab-count-passed">0</span></button>
+      <button class="public-tab-btn" data-tab="map">🗺 Map View</button>
     </div>
-    <div id="tab-active">
+    <!-- Sites for Consideration — no feedback yet -->
+    <div id="tab-consideration">
       <div class="table-wrap">
         <table class="data-table">
           <thead><tr>
             <th>Address</th><th>City</th><th>Proposed NNN Rent</th><th>Acreage</th>
-            <th>Parking Stalls</th><th>Stage</th><th>Feedback Summary</th><th>Your Feedback (Stalls Needed)</th>
+            <th>Max Parking Stalls</th><th>Zoning</th><th>Power Company</th><th>Stalls Needed</th><th>Your Feedback</th>
           </tr></thead>
-          <tbody id="public-tbody">
-            <tr><td colspan="8"><div class="empty-state"><div class="empty-icon">🏗️</div><h3>No properties yet</h3><p>Properties will appear here once added by the team.</p></div></td></tr>
+          <tbody id="consideration-tbody">
+            <tr><td colspan="9"><div class="empty-state"><div class="empty-icon">🏗️</div><h3>No properties yet</h3><p>Properties will appear here once added by the team.</p></div></td></tr>
           </tbody>
         </table>
       </div>
     </div>
+    <!-- Currently Pursuing — has feedback, not passed -->
+    <div id="tab-pursuing" style="display:none;">
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr>
+            <th>Address</th><th>City</th><th>Proposed NNN Rent</th><th>Acreage</th>
+            <th>Max Parking Stalls</th><th>Zoning</th><th>Power Company</th><th>Stalls Needed</th><th>Your Feedback</th>
+          </tr></thead>
+          <tbody id="pursuing-tbody">
+            <tr><td colspan="9"><div class="empty-state"><div class="empty-icon">🔍</div><h3>None yet</h3><p>Properties move here when you give them feedback.</p></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <!-- Passed on Sites -->
     <div id="tab-passed" style="display:none;">
       <div class="table-wrap">
         <table class="data-table">
           <thead><tr>
             <th>Address</th><th>City</th><th>Proposed NNN Rent</th><th>Acreage</th>
-            <th>Parking Stalls</th><th>Stage</th><th>Stalls Needed</th><th>Action</th>
+            <th>Max Parking Stalls</th><th>Zoning</th><th>Power Company</th><th>Stalls Needed</th><th>Action</th>
           </tr></thead>
           <tbody id="passed-tbody"></tbody>
         </table>
       </div>
+    </div>
+    <div id="tab-map" style="display:none;">
+      <div id="map-canvas" style="height:560px;border-radius:10px;border:1px solid #2a3148;"></div>
+      <div id="map-status" style="font-size:12px;color:var(--text-muted);margin-top:8px;text-align:center;min-height:18px;"></div>
     </div>
   </div>
 </div>
@@ -343,24 +387,38 @@ td.editable input{background:var(--bg);border:1px solid var(--accent);border-rad
   <div class="content" id="admin-frontend-content" style="display:none;">
     <div class="public-header"><div><h2>Frontend Preview</h2><p>Exactly what the public sees.</p></div></div>
     <div style="margin-bottom:16px;display:flex;gap:4px;border-bottom:1px solid var(--border);">
-      <button class="public-tab-btn active" data-preview-tab="active">Active Prospects <span class="public-tab-count" id="preview-count-active">0</span></button>
+      <button class="public-tab-btn active" data-preview-tab="consideration">Sites for Consideration <span class="public-tab-count" id="preview-count-consideration">0</span></button>
+      <button class="public-tab-btn" data-preview-tab="pursuing">Currently Pursuing <span class="public-tab-count" id="preview-count-pursuing">0</span></button>
       <button class="public-tab-btn" data-preview-tab="passed">Passed on Sites <span class="public-tab-count" id="preview-count-passed">0</span></button>
+      <button class="public-tab-btn" data-preview-tab="map">🗺 Map View</button>
     </div>
-    <div id="preview-tab-active">
+    <div id="preview-tab-consideration">
       <div class="table-wrap">
         <table class="data-table">
-          <thead><tr><th>Address</th><th>City</th><th>Proposed NNN Rent</th><th>Acreage</th><th>Parking Stalls</th><th>Stage</th><th>Feedback Summary</th><th>Stalls Needed</th></tr></thead>
-          <tbody id="admin-pub-tbody"></tbody>
+          <thead><tr><th>Address</th><th>City</th><th>Proposed NNN Rent</th><th>Acreage</th><th>Max Parking Stalls</th><th>Zoning</th><th>Power Company</th><th>Stalls Needed</th><th>Your Feedback</th></tr></thead>
+          <tbody id="admin-consideration-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div id="preview-tab-pursuing" style="display:none;">
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Address</th><th>City</th><th>Proposed NNN Rent</th><th>Acreage</th><th>Max Parking Stalls</th><th>Zoning</th><th>Power Company</th><th>Stalls Needed</th><th>Your Feedback</th></tr></thead>
+          <tbody id="admin-pursuing-tbody"></tbody>
         </table>
       </div>
     </div>
     <div id="preview-tab-passed" style="display:none;">
       <div class="table-wrap">
         <table class="data-table">
-          <thead><tr><th>Address</th><th>City</th><th>Proposed NNN Rent</th><th>Acreage</th><th>Parking Stalls</th><th>Stage</th><th>Stalls Needed</th><th>Action</th></tr></thead>
+          <thead><tr><th>Address</th><th>City</th><th>Proposed NNN Rent</th><th>Acreage</th><th>Max Parking Stalls</th><th>Zoning</th><th>Power Company</th><th>Stalls Needed</th><th>Action</th></tr></thead>
           <tbody id="admin-passed-tbody"></tbody>
         </table>
       </div>
+    </div>
+    <div id="preview-tab-map" style="display:none;">
+      <div id="map-canvas-preview" style="height:560px;border-radius:10px;border:1px solid #2a3148;margin-top:4px;"></div>
+      <div id="map-status-preview" style="font-size:12px;color:var(--text-muted);margin-top:8px;text-align:center;min-height:18px;"></div>
     </div>
   </div>
 
@@ -401,6 +459,9 @@ td.editable input{background:var(--bg);border:1px solid var(--accent);border-rad
       </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Zoning</label><input type="text" id="prop-zoning" class="form-control" placeholder="C-2"></div>
+        <div class="form-group"><label class="form-label">Power Company</label><input type="text" id="prop-power-company" class="form-control" placeholder="TECO, FPL, Duke…"></div>
+      </div>
+      <div class="form-row">
         <div class="form-group"><label class="form-label">Stage</label>
           <select id="prop-stage" class="form-control form-select">
             <option value="possible">Possible</option>
@@ -441,8 +502,8 @@ td.editable input{background:var(--bg);border:1px solid var(--accent);border-rad
           <div class="form-group"><label class="form-label">RNG</label><input type="text" id="prop-rng" class="form-control" placeholder="18E"></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label class="form-label">Initial Deposit ($)</label><input type="number" id="prop-init-deposit" class="form-control" placeholder="50000" min="0"></div>
-          <div class="form-group"><label class="form-label">Deposit Days</label><input type="number" id="prop-deposit-days" class="form-control" placeholder="3" min="0"></div>
+          <div class="form-group"><label class="form-label">Fee Rate (% of purchase price)</label><input type="text" id="prop-fee-rate" class="form-control" placeholder="e.g. 3%"><div style="font-size:11px;color:var(--text-muted);margin-top:3px;" id="fee-calc-preview"></div></div>
+          <div class="form-group"></div>
         </div>
       </div>
 
@@ -453,6 +514,15 @@ td.editable input{background:var(--bg);border:1px solid var(--accent);border-rad
           <input type="checkbox" id="prop-public" checked>
           <span class="form-label" style="margin:0">Visible on public frontend</span>
         </label>
+      </div>
+
+      <!-- Documents attached to this property -->
+      <div class="modal-section" id="prop-docs-section" style="display:none;">
+        <div class="modal-section-label">Documents</div>
+        <div id="prop-docs-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;"></div>
+        <button class="btn btn-ghost btn-sm" id="btn-modal-upload-doc">📎 Upload Document</button>
+        <input type="file" id="modal-doc-file" accept=".pdf,.jpg,.jpeg,.png" style="display:none">
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Docs are saved to the card. If an API key is set, blank fields auto-fill from each upload.</div>
       </div>
 
       <!-- Pro Forma Analysis (shown when asking price is set) -->
@@ -483,6 +553,46 @@ td.editable input{background:var(--bg);border:1px solid var(--accent);border-rad
     <div class="modal-footer">
       <button class="btn btn-secondary" id="dead-skip">Skip</button>
       <button class="btn btn-danger" id="dead-confirm">Confirm Dead</button>
+    </div>
+  </div>
+</div>
+
+<!-- PSA Visual Editor Modal -->
+<div class="modal-overlay hidden" id="psa-editor-modal" style="align-items:flex-start;padding:16px;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:min(820px,96vw);max-height:96vh;box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden;">
+    <div class="modal-header" style="flex-shrink:0;">
+      <div>
+        <h3>📄 PSA Field Position Editor</h3>
+        <p style="font-size:12px;color:var(--text-muted);margin-top:3px;">Drag each red label to its correct blank on the form — positions save automatically on drop.</p>
+      </div>
+      <button class="modal-close" id="psa-editor-x">×</button>
+    </div>
+    <div style="background:var(--surface2);border-bottom:1px solid var(--border);padding:8px 16px;font-size:12px;color:var(--text-muted);flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <span>📌 Drag labels onto the form · Scroll to see the full page · Changes save instantly</span>
+      <div style="display:flex;gap:8px;">
+        <select id="psa-page-select" class="form-control form-select" style="padding:3px 8px;font-size:12px;width:auto;">
+          <option value="1">Page 1</option>
+          <option value="2">Page 2</option>
+          <option value="3">Page 3</option>
+          <option value="4">Page 4</option>
+          <option value="5">Page 5</option>
+          <option value="6">Page 6</option>
+          <option value="7">Page 7</option>
+          <option value="8">Page 8</option>
+        </select>
+        <select id="psa-zoom-select" class="form-control form-select" style="padding:3px 8px;font-size:12px;width:auto;">
+          <option value="1">100%</option>
+          <option value="1.5" selected>150%</option>
+          <option value="2">200%</option>
+        </select>
+      </div>
+    </div>
+    <div id="psa-canvas-wrap">
+      <canvas id="psa-pdf-canvas" style="display:block;"></canvas>
+    </div>
+    <div id="psa-editor-coords" style="display:none;">Drag a label to see coordinates</div>
+    <div class="modal-footer" style="flex-shrink:0;">
+      <button class="btn btn-secondary" id="psa-editor-close">Done</button>
     </div>
   </div>
 </div>
@@ -539,7 +649,7 @@ const FB_SUMMARY_OPTIONS = [
 const FB_MAP = Object.fromEntries(FB_SUMMARY_OPTIONS.map(o=>[o.value,o]));
 
 const AUTOMATIONS = {
-  'possible→draft_offer':           [{title:'Prepare Initial Offer',desc:'Draft initial offer letter'},{title:'Run Comps Analysis',desc:'Pull comparable sales'}],
+  // possible→draft_offer is handled by autoGeneratePSATask (no manual tasks needed)
   'draft_offer→offer_outstanding':  [{title:'Submit Offer to Seller',desc:'Send formal offer package to listing agent'},{title:'Notify Investor Group',desc:'Send offer summary to investors'}],
   'offer_outstanding→due_diligence':[{title:'Order Property Inspection',desc:'Schedule inspection'},{title:'Order Title Search',desc:'Engage title company'},{title:'Environmental Review',desc:'Phase 1 ESA check'}],
   'due_diligence→permitting':       [{title:'Submit Permit Applications',desc:'File permits with municipality'},{title:'Engage Architect/Engineer',desc:'Retain design professionals'}],
@@ -551,18 +661,45 @@ const AUTOMATIONS = {
 const DD_STAGES = ['due_diligence','permitting','closing','closed'];
 
 // ── STATE ────────────────────────────────────────────────────
-let db, auth, currentUser = null;
+let db, auth, storage, currentUser = null;
 let allProperties = {}, allTasks = {};
 let adminView = 'kanban';
 let sortState = { col:null, dir:1 };
 let unsubProperties, unsubTasks;
-let publicActiveTab = 'active', previewTab = 'active';
+let publicActiveTab = 'consideration', previewTab = 'consideration';
 let pendingDeadMove = null;
+// PSA field definitions — what maps where on the FARBAR form
+const PSA_FIELD_DEFS = [
+  { key:'sellerName',    label:'Seller Name',         propField:'sellerName',  fmt:null, page:0 },
+  { key:'propAddress',   label:'Property Address',    propField:'address',     fmt:null, page:0 },
+  { key:'legalDesc',     label:'Legal Description',   propField:'legalDesc',   fmt:null, page:0 },
+  { key:'secVal',        label:'SEC',                 propField:'secVal',      fmt:null, page:0 },
+  { key:'twpVal',        label:'TWP',                 propField:'twpVal',      fmt:null, page:0 },
+  { key:'rngVal',        label:'RNG',                 propField:'rngVal',      fmt:null, page:0 },
+  { key:'county',        label:'County',              propField:'county',      fmt:null, page:0 },
+  { key:'purchasePrice', label:'Purchase Price',      propField:'price',       fmt:'$',  page:0 },
+  { key:'fee',           label:'Fee (Additional Terms)', propField:'feeRate',  fmt:'%→$', page:6 },
+];
+
+// Default positions — adjust in Settings → PSA Field Positions
+let psaPositions = {
+  sellerName:    { x:80,  y:706 },
+  propAddress:   { x:80,  y:665 },
+  legalDesc:     { x:80,  y:651 },
+  secVal:        { x:65,  y:584 },
+  twpVal:        { x:120, y:584 },
+  rngVal:        { x:174, y:584 },
+  county:        { x:300, y:571 },
+  purchasePrice: { x:188, y:543 },
+  fee:           { x:80,  y:450 }, // page 7 additional terms — calibrate with drag editor
+};
+
 let proformaSettings = {
   ltvPct:65, annualRate:7, amortYears:25, returnOnCostPct:8,
   prefEquityPct:20, prefReturnPct:12,
-  pursuitCostDollar:10000, closingCostPct:3, closingFeeDollar:10000,
+  pursuitCostDollar:10000, closingCostPct:2, closingFeeDollar:10000,
   interestReserveMonths:6, dcrTarget:1.25, carryPeriodMonths:12,
+  propertyTaxRate:0.18, maintenanceMonthly:500, insuranceRate:0.05, managementFeeYearly:5000,
   refiRate:6.5, refiAmortYears:20, refiDcr:1.25, refiClosingCostPct:2
 };
 let anthropicApiKey = '';
@@ -570,8 +707,9 @@ let anthropicApiKey = '';
 // ── INIT ─────────────────────────────────────────────────────
 (function init(){
   try{ firebase.initializeApp(FIREBASE_CONFIG); }catch(e){}
-  db   = firebase.firestore();
-  auth = firebase.auth();
+  db      = firebase.firestore();
+  auth    = firebase.auth();
+  storage = firebase.storage();
   auth.onAuthStateChanged(user=>{
     currentUser = user;
     if(user) showAdminView(user); else showPublicView();
@@ -584,14 +722,21 @@ function show(id,flex=true){ document.getElementById(id).style.display=flex?'fle
 
 function showPublicView(){
   hide('view-loading'); hide('view-login'); hide('view-admin'); show('view-public');
-  listenProperties(renderPublicTables);
+  listenProperties(()=>{
+    renderPublicTables();
+    // If map tab is active, refresh the map so new/updated properties appear immediately
+    if(publicActiveTab==='map') renderMapView('map-canvas','map-status');
+  });
 }
 async function showAdminView(user){
   hide('view-loading'); hide('view-login'); hide('view-public'); show('view-admin');
   document.getElementById('admin-user-name').textContent = user.displayName||user.email;
   await loadSettings();
   setAdminView('kanban');
-  listenProperties(()=>{ renderKanban(); renderAdminTable(); renderAdminPubTable(); });
+  listenProperties(()=>{
+    renderKanban(); renderAdminTable(); renderAdminPubTable();
+    if(adminView==='frontend'&&previewTab==='map') renderMapView('map-canvas-preview','map-status-preview');
+  });
   listenTasks(renderTasksPanel);
 }
 function showLoginView(){
@@ -632,13 +777,33 @@ function listenTasks(cb){
 // ── SETTINGS ─────────────────────────────────────────────────
 async function loadSettings(){
   try{
-    const [pf,gen] = await Promise.all([
+    const [pf,gen,psa] = await Promise.all([
       db.collection('settings').doc('proforma').get(),
-      db.collection('settings').doc('general').get()
+      db.collection('settings').doc('general').get(),
+      db.collection('settings').doc('psa').get()
     ]);
-    if(pf.exists) proformaSettings = {...proformaSettings,...pf.data()};
+    if(pf.exists)  proformaSettings = {...proformaSettings,...pf.data()};
     if(gen.exists && gen.data().anthropicApiKey) anthropicApiKey = gen.data().anthropicApiKey;
-  }catch(e){ console.warn('Settings:',e); }
+    if(psa.exists) psaPositions    = {...psaPositions,...psa.data()};
+    console.log('Settings loaded ✅', {proformaSettings});
+  }catch(e){
+    console.error('Settings load failed:', e);
+    setTimeout(()=>toast('⚠️','Settings not loading',
+      'Firestore rules need updating — go to Firebase Console → Firestore → Rules and add the settings collection rule (see the comment at the bottom of index.html)'),
+    1500);
+  }
+}
+
+async function saveSettings(collection, data){
+  try{
+    await db.collection('settings').doc(collection).set(data);
+    return true;
+  }catch(e){
+    console.error('Settings save failed:', e);
+    toast('❌','Settings save failed',
+      'Check Firestore Security Rules — settings collection must allow read/write for auth users');
+    return false;
+  }
 }
 
 function renderSettingsView(){
@@ -677,17 +842,42 @@ function renderSettingsView(){
         <div class="form-group"><label class="form-label">Closing Fee ($)</label><input type="number" class="form-control" id="pf-closing-fee" value="${pf.closingFeeDollar}" min="0" step="1000"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Soft Costs (% of Price)</label><input type="number" class="form-control" id="pf-closing-pct" value="${pf.closingCostPct}" min="0" step="0.25"></div>
+        <div class="form-group"><label class="form-label">Closing Costs (% of price)</label><input type="number" class="form-control" id="pf-closing-pct" value="${pf.closingCostPct||2}" min="0" step="0.25"></div>
         <div class="form-group"></div>
       </div>
 
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin:14px 0 10px;">Interest Reserve &amp; Carry</div>
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin:14px 0 10px;">Interest Reserve &amp; Carry Costs</div>
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Interest Reserve (Months)</label><input type="number" class="form-control" id="pf-ir-months" value="${pf.interestReserveMonths}" min="0" max="36"></div>
-        <div class="form-group"><label class="form-label">Carry Period Before Refi (Months)</label><input type="number" class="form-control" id="pf-carry-months" value="${pf.carryPeriodMonths}" min="1" max="120"></div>
+        <div class="form-group"><label class="form-label">Interest Reserve (Months)</label><input type="number" class="form-control pf-input" id="pf-ir-months" value="${pf.interestReserveMonths}" min="0" max="36"></div>
+        <div class="form-group"><label class="form-label">Carry Period Before Refi (Months)</label><input type="number" class="form-control pf-input" id="pf-carry-months" value="${pf.carryPeriodMonths}" min="1" max="120"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Property Tax Rate (% of price/yr)</label>
+          <input type="number" class="form-control pf-input" id="pf-tax-rate" value="${pf.propertyTaxRate}" min="0" step="0.01">
+          <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">e.g. 0.18 = 0.18% annually</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Insurance Rate (% of price/yr)</label>
+          <input type="number" class="form-control pf-input" id="pf-insurance-rate" value="${pf.insuranceRate}" min="0" step="0.01">
+          <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">e.g. 0.05 = 0.05% annually</div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Maintenance ($/month)</label>
+          <input type="number" class="form-control pf-input" id="pf-maintenance" value="${pf.maintenanceMonthly}" min="0" step="100">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Management Fee ($/year)</label>
+          <input type="number" class="form-control pf-input" id="pf-management-fee" value="${pf.managementFeeYearly||5000}" min="0" step="500">
+        </div>
       </div>
 
-      <button class="btn btn-primary" id="btn-save-proforma">Save Pro Forma Settings</button>
+      <div style="display:flex;align-items:center;gap:14px;margin-top:4px;">
+        <button class="btn btn-primary btn-sm" id="btn-save-proforma">Save</button>
+        <span id="pf-save-indicator" style="font-size:12px;height:16px;"></span>
+      </div>
     </div>
 
     <!-- REFI CALCULATOR -->
@@ -703,6 +893,49 @@ function renderSettingsView(){
         <div class="form-group"><label class="form-label">Refi Closing Cost %</label><input type="number" class="form-control" id="pf-refi-closing" value="${pf.refiClosingCostPct}" min="0" step="0.25"></div>
       </div>
       <button class="btn btn-primary" id="btn-save-refi">Save Refi Settings</button>
+    </div>
+
+    <!-- PSA FIELD POSITIONS -->
+    <div class="settings-card">
+      <div class="settings-card-title">PSA Field Positions</div>
+      <div class="settings-card-desc">
+        Set the exact x/y coordinates where each value is drawn on the FARBAR contract.
+        <strong>Origin is bottom-left</strong> — x goes right (0–612), y goes up (0–792).
+        Use <strong>Calibration PDF</strong> to download the form with red markers showing current positions, then adjust until they line up with the blank fields.
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead>
+          <tr style="background:var(--bg);">
+            <th style="padding:7px 10px;text-align:left;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);">Field</th>
+            <th style="padding:7px 10px;text-align:left;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);">From Property</th>
+            <th style="padding:7px 8px;text-align:center;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);">X →</th>
+            <th style="padding:7px 8px;text-align:center;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);">Y ↑</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${PSA_FIELD_DEFS.map(f=>`
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:6px 10px;font-weight:600;">${f.label}</td>
+            <td style="padding:6px 10px;color:var(--text-muted);font-family:monospace;font-size:11px;">${f.propField}</td>
+            <td style="padding:4px 8px;">
+              <input type="number" class="form-control psa-coord" id="psa-${f.key}-x"
+                value="${psaPositions[f.key]?.x??0}" min="0" max="612" step="1"
+                style="width:70px;padding:4px 8px;text-align:center;">
+            </td>
+            <td style="padding:4px 8px;">
+              <input type="number" class="form-control psa-coord" id="psa-${f.key}-y"
+                value="${psaPositions[f.key]?.y??0}" min="0" max="792" step="1"
+                style="width:70px;padding:4px 8px;text-align:center;">
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
+        <button class="btn btn-primary btn-sm" id="btn-psa-visual-editor">🖱 Drag &amp; Drop Editor</button>
+        <button class="btn btn-ghost btn-sm" id="btn-psa-calibrate">🎯 Calibration PDF</button>
+        <button class="btn btn-secondary btn-sm" id="btn-save-psa">Save Positions</button>
+      </div>
+      <div id="psa-save-indicator" style="font-size:12px;color:var(--text-muted);margin-top:8px;height:16px;"></div>
     </div>
 
     <!-- AI KEY -->
@@ -724,23 +957,31 @@ function renderSettingsView(){
       refiClosingCostPct:parseFloat(document.getElementById('pf-refi-closing')?.value)|| 2,
     };
     proformaSettings = {
-      ltvPct:              parseFloat(document.getElementById('pf-ltv').value)           || 65,
-      annualRate:          parseFloat(document.getElementById('pf-rate').value)          || 7,
-      amortYears:          parseInt(document.getElementById('pf-amort').value)           || 25,
-      returnOnCostPct:     parseFloat(document.getElementById('pf-roc').value)           || 8,
-      prefEquityPct:       parseFloat(document.getElementById('pf-pref-eq').value)       || 20,
-      prefReturnPct:       parseFloat(document.getElementById('pf-pref-ret').value)      || 12,
-      pursuitCostDollar:   parseFloat(document.getElementById('pf-pursuit-dollar').value)|| 10000,
-      closingFeeDollar:    parseFloat(document.getElementById('pf-closing-fee').value)   || 10000,
-      closingCostPct:      parseFloat(document.getElementById('pf-closing-pct').value)   || 3,
-      interestReserveMonths:parseInt(document.getElementById('pf-ir-months').value)      || 6,
-      dcrTarget:           parseFloat(document.getElementById('pf-dcr').value)           || 1.25,
-      carryPeriodMonths:   parseInt(document.getElementById('pf-carry-months').value)    || 12,
+      ltvPct:               parseFloat(document.getElementById('pf-ltv').value)            || 65,
+      annualRate:           parseFloat(document.getElementById('pf-rate').value)           || 7,
+      amortYears:           parseInt(document.getElementById('pf-amort').value)            || 25,
+      returnOnCostPct:      parseFloat(document.getElementById('pf-roc').value)            || 8,
+      prefEquityPct:        parseFloat(document.getElementById('pf-pref-eq').value)        || 20,
+      prefReturnPct:        parseFloat(document.getElementById('pf-pref-ret').value)       || 12,
+      pursuitCostDollar:    parseFloat(document.getElementById('pf-pursuit-dollar').value) || 10000,
+      closingFeeDollar:     parseFloat(document.getElementById('pf-closing-fee').value)    || 10000,
+      closingCostPct:       parseFloat(document.getElementById('pf-closing-pct').value)    || 2,
+      interestReserveMonths:parseInt(document.getElementById('pf-ir-months').value)        || 6,
+      dcrTarget:            parseFloat(document.getElementById('pf-dcr').value)            || 1.25,
+      carryPeriodMonths:    parseInt(document.getElementById('pf-carry-months').value)     || 12,
+      propertyTaxRate:      parseFloat(document.getElementById('pf-tax-rate').value)       || 0.18,
+      insuranceRate:        parseFloat(document.getElementById('pf-insurance-rate').value) || 0.05,
+      maintenanceMonthly:   parseFloat(document.getElementById('pf-maintenance').value)    || 500,
+      managementFeeYearly:  parseFloat(document.getElementById('pf-management-fee').value) || 5000,
       ...refiPart
     };
-    await db.collection('settings').doc('proforma').set(proformaSettings);
-    toast('✅','Pro Forma saved','All rents and refi calcs updated');
-    renderKanban(); renderAdminTable(); renderAdminPubTable(); renderPublicTables();
+    const ind2 = document.getElementById('pf-save-indicator');
+    if(ind2){ ind2.textContent='Saving…'; ind2.style.color='var(--text-muted)'; }
+    const ok = await saveSettings('proforma', proformaSettings);
+    if(ind2){ ind2.textContent= ok ? '✓ Saved' : '❌ Failed — check Firestore rules'; ind2.style.color= ok ? '#4ade80' : '#f87171';
+      setTimeout(()=>{ if(ind2) ind2.textContent=''; }, ok?2500:8000); }
+    if(ok){ toast('✅','Pro Forma saved','All rents and refi calcs updated');
+      renderKanban(); renderAdminTable(); renderAdminPubTable(); renderPublicTables(); }
   });
 
   document.getElementById('btn-save-refi').addEventListener('click', async ()=>{
@@ -750,6 +991,42 @@ function renderSettingsView(){
     proformaSettings.refiClosingCostPct= parseFloat(document.getElementById('pf-refi-closing').value) || 2;
     await db.collection('settings').doc('proforma').set(proformaSettings);
     toast('✅','Refi settings saved','');
+  });
+
+  document.getElementById('btn-psa-visual-editor').addEventListener('click', openPSAEditor);
+  document.getElementById('btn-psa-calibrate').addEventListener('click', generateCalibrationPDF);
+
+  document.getElementById('btn-save-psa').addEventListener('click', async ()=>{
+    const ind=document.getElementById('psa-save-indicator');
+    if(ind){ ind.textContent='Saving…'; ind.style.color='var(--text-muted)'; }
+    PSA_FIELD_DEFS.forEach(f=>{
+      const xEl=document.getElementById('psa-'+f.key+'-x');
+      const yEl=document.getElementById('psa-'+f.key+'-y');
+      if(xEl&&yEl){ psaPositions[f.key]={ x:parseFloat(xEl.value)||0, y:parseFloat(yEl.value)||0 }; }
+    });
+    await db.collection('settings').doc('psa').set(psaPositions);
+    if(ind){ ind.textContent='✓ Saved'; ind.style.color='#4ade80';
+      setTimeout(()=>{ if(ind) ind.textContent=''; },2500); }
+    toast('✅','PSA positions saved','');
+  });
+
+  // Auto-save PSA coords on change
+  document.querySelectorAll('.psa-coord').forEach(inp=>{
+    inp.addEventListener('change',()=>{
+      const ind=document.getElementById('psa-save-indicator');
+      if(ind){ ind.textContent='Saving…'; ind.style.color='var(--text-muted)'; }
+      clearTimeout(inp._psaTimer);
+      inp._psaTimer=setTimeout(async()=>{
+        PSA_FIELD_DEFS.forEach(f=>{
+          const xEl=document.getElementById('psa-'+f.key+'-x');
+          const yEl=document.getElementById('psa-'+f.key+'-y');
+          if(xEl&&yEl){ psaPositions[f.key]={ x:parseFloat(xEl.value)||0, y:parseFloat(yEl.value)||0 }; }
+        });
+        await db.collection('settings').doc('psa').set(psaPositions);
+        if(ind){ ind.textContent='✓ Saved'; ind.style.color='#4ade80';
+          setTimeout(()=>{ if(ind) ind.textContent=''; },2000); }
+      },600);
+    });
   });
 
   document.getElementById('btn-save-api-key').addEventListener('click', async ()=>{
@@ -763,16 +1040,26 @@ function renderSettingsView(){
 // ── PRO FORMA ────────────────────────────────────────────────
 // ── PRO FORMA HELPERS ────────────────────────────────────────
 function _pfBasis(price, pf){
-  const pursuit  = pf.pursuitCostDollar  || 10000;
-  const closFee  = pf.closingFeeDollar   || 10000;
-  const closPct  = (pf.closingCostPct    || 3) / 100;
-  const ltv      = (pf.ltvPct            || 65) / 100;
-  const rate     = (pf.annualRate        || 7)  / 100;
+  const pursuit  = pf.pursuitCostDollar     || 10000;
+  const closFee  = pf.closingFeeDollar      || 10000;
+  const closPct  = (pf.closingCostPct       || 2)    / 100;
+  const ltv      = (pf.ltvPct              || 65)    / 100;
+  const rate     = (pf.annualRate           || 7)    / 100;
   const irMonths = pf.interestReserveMonths || 6;
+  const carry    = pf.carryPeriodMonths     || 12;
   const debt     = price * ltv;
   const ir       = debt * rate * (irMonths / 12);
-  const basis    = price + pursuit + closFee + (price * closPct) + ir;
-  return { basis, debt, ir, equity: basis - debt };
+  // Carry-period operating costs
+  const taxRate   = (pf.propertyTaxRate   || 0.18) / 100;
+  const insurRate = (pf.insuranceRate     || 0.05) / 100;
+  const maintMo   =  pf.maintenanceMonthly || 500;
+  const mgmtYr    =  pf.managementFeeYearly || 5000;
+  const propTaxes   = price * taxRate   * (carry / 12);
+  const insurance   = price * insurRate * (carry / 12);
+  const maintenance = maintMo * carry;
+  const management  = mgmtYr * (carry / 12);
+  const basis = price + pursuit + closFee + (price * closPct) + ir + propTaxes + insurance + maintenance + management;
+  return { basis, debt, ir, equity: basis - debt, propTaxes, insurance, maintenance, management };
 }
 
 function calcRent(askingPrice){
@@ -802,7 +1089,7 @@ function calcRefi(askingPrice){
   const noi = calcRent(price);
   if(!noi) return null;
 
-  const { basis, debt: constDebt, equity, ir } = _pfBasis(price, pf);
+  const { basis, debt: constDebt, equity, ir, propTaxes, insurance, maintenance, management } = _pfBasis(price, pf);
   const prefEqPct  = (pf.prefEquityPct||20)/100;
   const prefRetPct = (pf.prefReturnPct||12)/100;
   const carry      = pf.carryPeriodMonths || 12;
@@ -836,8 +1123,12 @@ function calcRefi(askingPrice){
     refiAds:   Math.round(noi/rdcr),
     refiClosing:Math.round(refiClosing),
     netCashOut:Math.round(netCashOut),
-    surplus:   Math.round(surplus),
-    ok:        surplus >= 0,
+    surplus:    Math.round(surplus),
+    ok:         surplus >= 0,
+    propTaxes:  Math.round(propTaxes),
+    insurance:  Math.round(insurance),
+    maintenance:Math.round(maintenance),
+    management: Math.round(management),
   };
 }
 
@@ -980,14 +1271,21 @@ function buildCard(prop){
     if(ds) extra+=`<div class="card-dates">📅 ${esc(ds)}</div>`;
   }
 
+  const docs = prop.documents||[];
+  const docChips = docs.slice(0,3).map(d=>
+    `<a href="${d.url}" target="_blank" rel="noopener" class="card-doc-chip" title="${esc(d.name)}" onclick="event.stopPropagation()">📄 ${esc(d.name.length>16?d.name.substring(0,16)+'…':d.name)}</a>`
+  ).join('');
+  const moreChip = docs.length>3?`<span class="card-doc-more">+${docs.length-3} more</span>`:'';
+
   card.innerHTML=`
     <button class="card-menu-btn" data-id="${prop.id}">✏️</button>
     <div class="prop-card-address">${esc(prop.address)}</div>
-    <div class="prop-card-meta">${esc(prop.city||'')}${prop.state?', '+esc(prop.state):''}${prop.zoning?' · '+esc(prop.zoning):''}${prop.parkingStalls?' · '+prop.parkingStalls+' stalls':''}</div>
+    <div class="prop-card-meta">${esc(prop.city||'')}${prop.state?', '+esc(prop.state):''}${prop.zoning?' · '+esc(prop.zoning):''}${prop.parkingStalls?' · '+prop.parkingStalls+' stalls':''}${prop.powerCompany?' · ⚡ '+esc(prop.powerCompany):''}</div>
     ${extra}
     <div class="card-info-row">
       ${prop.price?`<span>ASK: <span class="ci-val">${fmt$(prop.price)}</span></span>`:''}
       ${pps?`<span>$/stall: <span class="ci-val">${fmt$(pps)}</span></span>`:''}
+      ${prop.feeRate?`<span>Comm: <span class="ci-val">${prop.feeRate}%</span></span>`:''}
     </div>
     <div class="card-footer">
       ${rent?`<span class="nnn-chip">NNN: ${fmt$(rent)}/yr</span>`:'<span style="color:var(--text-muted);font-size:11px;">No asking price</span>'}
@@ -995,9 +1293,30 @@ function buildCard(prop){
         ${lps?`<span style="font-size:11px;color:var(--text-muted);">${fmt$(lps)}/stall</span>`:''}
         ${fbOpt&&fbOpt.chip?`<span class="fb-chip ${fbOpt.chip}" style="font-size:10px">${fbOpt.label}</span>`:''}
       </div>
+    </div>
+    <div class="card-docs-row">
+      <span style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.4px;text-transform:uppercase;flex-basis:100%;margin-bottom:2px;">📎 Documents${docs.length?' ('+docs.length+')':''}</span>
+      ${docChips}${moreChip}
+      <button class="card-upload-btn" title="Upload document — reads with AI to fill blanks">+ Add Doc</button>
+      <input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none" class="card-file-input">
     </div>`;
+
   card.addEventListener('dragstart',onDragStart);
   card.querySelector('.card-menu-btn').addEventListener('click',e=>{e.stopPropagation();openPropertyModal(prop.id);});
+
+  // Document upload
+  const uploadBtn=card.querySelector('.card-upload-btn');
+  const fileInp=card.querySelector('.card-file-input');
+  uploadBtn.addEventListener('click',e=>{e.stopPropagation();e.preventDefault();fileInp.click();});
+  fileInp.addEventListener('change',async e=>{
+    const file=e.target.files[0]; if(!file) return;
+    e.target.value='';
+    uploadBtn.textContent='⏳ Uploading…'; uploadBtn.disabled=true;
+    await uploadPropertyDoc(prop.id, file);
+    // Card re-renders via Firestore listener; reset button in case listener is slow
+    setTimeout(()=>{ uploadBtn.textContent='+ Add Doc'; uploadBtn.disabled=false; }, 3000);
+  });
+
   return card;
 }
 
@@ -1023,6 +1342,11 @@ async function onDrop(e){
 
 // ── AUTOMATIONS ──────────────────────────────────────────────
 async function triggerAutomations(propId,fromStage,toStage,address){
+  // Draft Offer: auto-generate & attach PSA instead of generic tasks
+  if(toStage==='draft_offer'){
+    autoGeneratePSATask(propId);
+    return;
+  }
   const key  = fromStage+'→'+toStage;
   const tpls = AUTOMATIONS[key]||(toStage==='dead'?AUTOMATIONS['→dead']:[]);
   if(!tpls.length) return;
@@ -1115,20 +1439,26 @@ document.getElementById('admin-stage-filter')?.addEventListener('change',renderA
 // ── PUBLIC TABLES ────────────────────────────────────────────
 function renderPublicTables(){
   const props = Object.values(allProperties).filter(p=>p.publicVisible!==false&&p.stage!=='dead'&&p.stage!=='closed');
-  const active=props.filter(p=>p.feedbackSummary!=='pass');
-  const passed=props.filter(p=>p.feedbackSummary==='pass');
-  const ca=document.getElementById('tab-count-active'); if(ca) ca.textContent=active.length;
-  const cp=document.getElementById('tab-count-passed'); if(cp) cp.textContent=passed.length;
-  renderActiveTable('public-tbody',active,false);
+  const consideration = props.filter(p=>!p.feedbackSummary||p.feedbackSummary==='');
+  const pursuing      = props.filter(p=>p.feedbackSummary&&p.feedbackSummary!=='pass');
+  const passed        = props.filter(p=>p.feedbackSummary==='pass');
+  const ec=document.getElementById('tab-count-consideration'); if(ec) ec.textContent=consideration.length;
+  const ep=document.getElementById('tab-count-pursuing');      if(ep) ep.textContent=pursuing.length;
+  const cp=document.getElementById('tab-count-passed');        if(cp) cp.textContent=passed.length;
+  renderActiveTable('consideration-tbody',consideration,false);
+  renderActiveTable('pursuing-tbody',pursuing,false);
   renderPassedTable('passed-tbody',passed,false);
 }
 function renderAdminPubTable(){
   const props=Object.values(allProperties).filter(p=>p.publicVisible!==false&&p.stage!=='dead'&&p.stage!=='closed');
-  const active=props.filter(p=>p.feedbackSummary!=='pass');
-  const passed=props.filter(p=>p.feedbackSummary==='pass');
-  const ca=document.getElementById('preview-count-active'); if(ca) ca.textContent=active.length;
-  const cp=document.getElementById('preview-count-passed'); if(cp) cp.textContent=passed.length;
-  renderActiveTable('admin-pub-tbody',active,true);
+  const consideration=props.filter(p=>!p.feedbackSummary||p.feedbackSummary==='');
+  const pursuing     =props.filter(p=>p.feedbackSummary&&p.feedbackSummary!=='pass');
+  const passed       =props.filter(p=>p.feedbackSummary==='pass');
+  const ec=document.getElementById('preview-count-consideration'); if(ec) ec.textContent=consideration.length;
+  const ep=document.getElementById('preview-count-pursuing');      if(ep) ep.textContent=pursuing.length;
+  const cp=document.getElementById('preview-count-passed');        if(cp) cp.textContent=passed.length;
+  renderActiveTable('admin-consideration-tbody',consideration,true);
+  renderActiveTable('admin-pursuing-tbody',pursuing,true);
   renderPassedTable('admin-passed-tbody',passed,true);
 }
 function fbSelHTML(propId,val){
@@ -1140,29 +1470,97 @@ function renderActiveTable(tbodyId,props,isPreview){
   if(!props.length){ tbody.innerHTML='<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">🏗️</div><h3>No active prospects</h3></div></td></tr>'; return; }
   tbody.innerHTML=props.map(p=>{
     const rent=calcRent(p.price);
+    const pps = rent&&p.stallsNeeded ? Math.round(rent/p.stallsNeeded) : null;
+    const mapQ = encodeURIComponent([p.address,p.city,p.state].filter(Boolean).join(', '));
+    const mapUrl = `https://www.google.com/maps/search/?api=1&query=${mapQ}`;
     return `<tr>
-      <td><strong>${esc(p.address||'')}</strong></td>
+      <td>
+        <strong>${esc(p.address||'')}</strong>
+        <a href="${mapUrl}" target="_blank" rel="noopener" title="View on Google Maps"
+           style="margin-left:6px;font-size:13px;text-decoration:none;">📍</a>
+      </td>
       <td>${esc(p.city||'')}${p.state?', '+esc(p.state):''}</td>
       <td style="font-weight:600;color:var(--accent)">${rent?'$'+Math.round(rent).toLocaleString()+'/yr':'—'}</td>
       <td>${esc(p.size||'—')}</td>
       <td>${p.parkingStalls??'—'}</td>
-      <td><span class="stage-badge stage-${p.stage||'possible'}">${STAGE_MAP[p.stage]?.label||'Possible'}</span></td>
-      <td>${fbSelHTML(p.id,p.feedbackSummary||'')}</td>
-      <td><input type="number" class="stalls-input" data-prop-id="${p.id}" value="${p.stallsNeeded||''}" placeholder="Enter stalls…" min="0"></td>
+      <td>${esc(p.zoning||'—')}</td>
+      <td>${esc(p.powerCompany||'—')}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <input type="number" class="stalls-input" data-prop-id="${p.id}" data-rent="${rent||0}"
+            value="${p.stallsNeeded||''}" placeholder="Enter stalls…" min="0">
+          <span class="pps-tag" id="pps-${p.id}"
+            style="font-size:12px;font-weight:700;color:var(--accent);white-space:nowrap;${pps?'':'display:none'}">
+            ${pps?'$'+pps.toLocaleString()+'/stall':''}
+          </span>
+        </div>
+      </td>
+      <td style="min-width:180px;">
+        ${fbSelHTML(p.id,p.feedbackSummary||'')}
+        <input type="text" class="fb-notes-input" data-prop-id="${p.id}"
+          value="${esc(p.feedbackNotes||'')}" placeholder="Add notes…"
+          style="margin-top:5px;width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:4px 8px;color:var(--text);font-size:12px;outline:none;transition:border-color .15s;">
+      </td>
     </tr>`;
   }).join('');
   tbody.querySelectorAll('.fb-summary-select').forEach(sel=>{
     sel.addEventListener('change', async e=>{
       const pid=e.target.dataset.propId, nv=e.target.value;
       e.target.className='fb-summary-select'+(nv?' val-'+nv:'');
+
+      // Auto-move to Draft Offer when Immediately Pursue selected
+      if(nv==='immediately_pursue'){
+        const prop=allProperties[pid];
+        const oldStage=prop?.stage;
+        if(prop && oldStage !== 'draft_offer'){
+          try{
+            await db.collection('properties').doc(pid).update({
+              feedbackSummary:nv,
+              stage:'draft_offer',
+              updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+            });
+            if(allProperties[pid]){ allProperties[pid].feedbackSummary=nv; allProperties[pid].stage='draft_offer'; }
+            if(currentUser) triggerAutomations(pid,oldStage,'draft_offer',prop.address);
+            else await db.collection('tasks').add({title:`⚡ Immediately Pursue — ${prop.address}`,desc:`Public feedback set to Immediately Pursue. Card moved to Draft Offer — PSA may need generating.`,propertyId:pid,propertyAddress:prop.address||'',status:'pending',triggeredBy:'public_immediately_pursue',createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+            renderPublicTables(); renderAdminPubTable(); renderKanban(); renderAdminTable();
+            return;
+          }catch(err){ console.warn('Stage move failed, saving feedback only'); }
+        }
+      }
+
       await savePropField(pid,'feedbackSummary',nv);
-      if(nv==='pass'){ renderPublicTables(); renderAdminPubTable(); renderKanban(); renderAdminTable(); }
+      // Re-render whenever feedback changes so property moves to the right tab instantly
+      renderPublicTables(); renderAdminPubTable(); renderKanban(); renderAdminTable();
       if(!currentUser&&nv){
         await db.collection('tasks').add({title:`Feedback: ${FB_MAP[nv]?.label} — ${allProperties[pid]?.address||pid}`,desc:`Public user set feedback to "${FB_MAP[nv]?.label}"`,propertyId:pid,propertyAddress:allProperties[pid]?.address||'',status:'pending',triggeredBy:'public_feedback',createdAt:firebase.firestore.FieldValue.serverTimestamp()});
       }
     });
   });
+
+  // Save feedback notes
+  tbody.querySelectorAll('.fb-notes-input').forEach(inp=>{
+    inp.addEventListener('change', async e=>{
+      await savePropField(e.target.dataset.propId,'feedbackNotes',e.target.value.trim());
+    });
+    inp.addEventListener('focus', e=>{ e.target.style.borderColor='var(--accent)'; });
+    inp.addEventListener('blur',  e=>{ e.target.style.borderColor='var(--border)'; });
+  });
   tbody.querySelectorAll('.stalls-input').forEach(inp=>{
+    // Live price-per-stall update as user types
+    inp.addEventListener('input', e=>{
+      const rent=parseFloat(e.target.dataset.rent)||0;
+      const stalls=parseInt(e.target.value)||0;
+      const tag=document.getElementById('pps-'+e.target.dataset.propId);
+      if(tag){
+        if(rent&&stalls>0){
+          tag.textContent='$'+Math.round(rent/stalls).toLocaleString()+'/stall';
+          tag.style.display='';
+        } else {
+          tag.style.display='none';
+        }
+      }
+    });
+    // Save to Firestore on change
     inp.addEventListener('change', async e=>{
       await savePropField(e.target.dataset.propId,'stallsNeeded',parseInt(e.target.value)||null);
     });
@@ -1173,13 +1571,18 @@ function renderPassedTable(tbodyId,props,isPreview){
   if(!props.length){ tbody.innerHTML='<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">📁</div><h3>No passed sites</h3></div></td></tr>'; return; }
   tbody.innerHTML=props.map(p=>{
     const rent=calcRent(p.price);
+    const mapQ=encodeURIComponent([p.address,p.city,p.state].filter(Boolean).join(', '));
     return `<tr>
-      <td><strong>${esc(p.address||'')}</strong></td>
+      <td>
+        <strong>${esc(p.address||'')}</strong>
+        <a href="https://www.google.com/maps/search/?api=1&query=${mapQ}" target="_blank" rel="noopener" title="View on Google Maps" style="margin-left:6px;font-size:13px;text-decoration:none;">📍</a>
+      </td>
       <td>${esc(p.city||'')}${p.state?', '+esc(p.state):''}</td>
       <td>${rent?'$'+Math.round(rent).toLocaleString()+'/yr':'—'}</td>
       <td>${esc(p.size||'—')}</td>
       <td>${p.parkingStalls??'—'}</td>
-      <td><span class="stage-badge stage-${p.stage||'possible'}">${STAGE_MAP[p.stage]?.label||'Possible'}</span></td>
+      <td>${esc(p.zoning||'—')}</td>
+      <td>${esc(p.powerCompany||'—')}</td>
       <td>${p.stallsNeeded||'—'}</td>
       <td><button class="btn-restore" data-restore="${p.id}">↩ Add Back</button></td>
     </tr>`;
@@ -1188,7 +1591,7 @@ function renderPassedTable(tbodyId,props,isPreview){
     btn.addEventListener('click', async ()=>{
       await savePropField(btn.dataset.restore,'feedbackSummary','');
       renderPublicTables(); renderAdminPubTable(); renderKanban(); renderAdminTable();
-      toast('✅','Site restored','Moved back to Active Prospects');
+      toast('✅','Site restored','Moved back to Sites for Consideration');
     });
   });
 }
@@ -1204,16 +1607,22 @@ document.querySelectorAll('.public-tab-btn[data-tab]').forEach(btn=>{
   btn.addEventListener('click',()=>{
     publicActiveTab=btn.dataset.tab;
     document.querySelectorAll('.public-tab-btn[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===publicActiveTab));
-    document.getElementById('tab-active').style.display=publicActiveTab==='active'?'block':'none';
+    document.getElementById('tab-consideration').style.display=publicActiveTab==='consideration'?'block':'none';
+    document.getElementById('tab-pursuing').style.display=publicActiveTab==='pursuing'?'block':'none';
     document.getElementById('tab-passed').style.display=publicActiveTab==='passed'?'block':'none';
+    document.getElementById('tab-map').style.display=publicActiveTab==='map'?'block':'none';
+    if(publicActiveTab==='map') renderMapView('map-canvas','map-status');
   });
 });
 document.querySelectorAll('.public-tab-btn[data-preview-tab]').forEach(btn=>{
   btn.addEventListener('click',()=>{
     previewTab=btn.dataset.previewTab;
     document.querySelectorAll('.public-tab-btn[data-preview-tab]').forEach(b=>b.classList.toggle('active',b.dataset.previewTab===previewTab));
-    document.getElementById('preview-tab-active').style.display=previewTab==='active'?'block':'none';
+    document.getElementById('preview-tab-consideration').style.display=previewTab==='consideration'?'block':'none';
+    document.getElementById('preview-tab-pursuing').style.display=previewTab==='pursuing'?'block':'none';
     document.getElementById('preview-tab-passed').style.display=previewTab==='passed'?'block':'none';
+    document.getElementById('preview-tab-map').style.display=previewTab==='map'?'block':'none';
+    if(previewTab==='map') renderMapView('map-canvas-preview','map-status-preview');
   });
 });
 
@@ -1235,13 +1644,64 @@ function openPropertyModal(id=null){
   set('prop-closing-date',p?.closingTargetDate); set('prop-seller',p?.sellerName);
   set('prop-county',p?.county); set('prop-legal-desc',p?.legalDesc);
   set('prop-sec',p?.secVal); set('prop-twp',p?.twpVal); set('prop-rng',p?.rngVal);
-  set('prop-init-deposit',p?.initDeposit); set('prop-deposit-days',p?.depositDays);
+  set('prop-power-company',p?.powerCompany);
+  // Load fee rate with % symbol
+  const feeRateEl=document.getElementById('prop-fee-rate');
+  if(feeRateEl) feeRateEl.value = p?.feeRate!=null ? p.feeRate+'%' : '';
+  // Live fee $ preview
+  const feeRateInp=document.getElementById('prop-fee-rate');
+  const feePreview=document.getElementById('fee-calc-preview');
+  const priceInp=document.getElementById('prop-price');
+  const updateFeePreview=()=>{
+    const raw=(feeRateInp?.value||'').replace('%','');
+    const rate=parseFloat(raw)||0;
+    const price=parseFloat(priceInp?.value)||0;
+    if(feePreview) feePreview.textContent=(rate&&price)?`= $${Math.round(price*rate/100).toLocaleString()} on this property`:'';
+  };
+  feeRateInp?.addEventListener('input',updateFeePreview);
+  priceInp?.addEventListener('input',updateFeePreview);
+  updateFeePreview();
   set('prop-notes',p?.notes);
   document.getElementById('prop-stage').value=p?.stage||'possible';
   document.getElementById('prop-public').checked=p?(p.publicVisible!==false):true;
   const psaBtn=document.getElementById('btn-gen-psa');
   psaBtn.style.display=(p&&p.stage==='draft_offer')?'inline-flex':'none';
   psaBtn.onclick=()=>{ closeModal('property-modal'); generatePSA(id); };
+  // Documents section — only shown when editing an existing property
+  const docsSection=document.getElementById('prop-docs-section');
+  const docsList=document.getElementById('prop-docs-list');
+  if(docsSection && docsList){
+    if(id){
+      docsSection.style.display='block';
+      const docs=p?.documents||[];
+      docsList.innerHTML=docs.length
+        ? docs.map(d=>`<a href="${d.url}" target="_blank" rel="noopener" class="card-doc-chip" style="font-size:11px;padding:3px 9px;" title="${esc(d.name)}">📄 ${esc(d.name)}</a>`).join('')
+        : '<span style="color:var(--text-muted);font-size:12px;">No documents yet</span>';
+    } else {
+      docsSection.style.display='none';
+    }
+  }
+  // Modal upload button
+  const modalUploadBtn=document.getElementById('btn-modal-upload-doc');
+  const modalFileInp=document.getElementById('modal-doc-file');
+  if(modalUploadBtn && modalFileInp){
+    const refreshModalDocs=()=>{
+      const docs=allProperties[id]?.documents||[];
+      if(docsList) docsList.innerHTML=docs.length
+        ? docs.map(d=>`<a href="${d.url}" target="_blank" rel="noopener" class="card-doc-chip" style="font-size:11px;padding:3px 9px;" title="${esc(d.name)}">📄 ${esc(d.name)}</a>`).join('')
+        : '<span style="color:var(--text-muted);font-size:12px;">No documents yet</span>';
+    };
+    modalUploadBtn.onclick=()=>modalFileInp.click();
+    modalFileInp.onchange=async e=>{
+      const file=e.target.files[0]; if(!file||!id) return;
+      e.target.value='';
+      modalUploadBtn.textContent='⏳ Uploading…'; modalUploadBtn.disabled=true;
+      await uploadPropertyDoc(id,file);
+      modalUploadBtn.textContent='📎 Upload Document'; modalUploadBtn.disabled=false;
+      refreshModalDocs();
+    };
+  }
+
   updateDropZone();
   const dz=document.getElementById('doc-drop-zone');
   if(dz){ dz.className='doc-drop-zone'; dz.innerHTML='🤖 Drop a PDF or image here — AI will auto-fill the fields below<div style="font-size:11px;margin-top:3px;opacity:.7">Click to browse · Supports PDF, JPG, PNG</div>'; }
@@ -1278,10 +1738,14 @@ function renderPropPFAnalysis(askingPrice){
         <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;">
           <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;">Acquisition Basis</div>
           ${pfRow('Purchase Price', fmt$(parseFloat(askingPrice)))}
-          ${pfRow('Soft Costs ('+(pf.closingCostPct||3)+'%)', fmt$(parseFloat(askingPrice)*(pf.closingCostPct||3)/100))}
+          ${pfRow('Closing Costs ('+(pf.closingCostPct||2)+'%)', fmt$(parseFloat(askingPrice)*(pf.closingCostPct||2)/100))}
           ${pfRow('Pursuit Cost', fmt$(pf.pursuitCostDollar||10000))}
           ${pfRow('Closing Fee', fmt$(pf.closingFeeDollar||10000))}
           ${pfRow('Interest Reserve ('+(pf.interestReserveMonths||6)+' mo)', fmt$(r.ir))}
+          ${pfRow('Property Taxes ('+(pf.propertyTaxRate||0.18)+'%/yr)', fmt$(r.propTaxes))}
+          ${pfRow('Insurance ('+(pf.insuranceRate||0.05)+'%/yr)', fmt$(r.insurance))}
+          ${pfRow('Maintenance ($'+(pf.maintenanceMonthly||500)+'/mo)', fmt$(r.maintenance))}
+          ${pfRow('Management Fee ($'+(pf.managementFeeYearly||5000)+'/yr)', fmt$(r.management))}
           <div style="border-top:1px solid var(--border);margin:8px 0;"></div>
           ${pfRow('Total Basis', fmt$(r.basis), true)}
           ${pfRow('Construction Debt ('+(pf.ltvPct||65)+'%)', fmt$(r.constDebt))}
@@ -1368,6 +1832,77 @@ async function callClaude(b64,mediaType){
   return JSON.parse(m[0]);
 }
 
+// ── DOCUMENT UPLOAD (kanban card + modal) ────────────────────
+async function uploadPropertyDoc(propId, file){
+  const prop=allProperties[propId];
+  if(!prop){ toast('❌','Property not found',''); return; }
+  toast('⏳','Uploading…',file.name);
+  try{
+    const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+    const path=`property-docs/${propId}/${Date.now()}_${safeName}`;
+    const ref=storage.ref(path);
+    const snap=await ref.put(file,{contentType:file.type||'application/octet-stream'});
+    const url=await snap.ref.getDownloadURL();
+    const newDoc={name:file.name, url, type:file.type||'', path, uploadedAt:new Date().toISOString()};
+    const docs=[...(prop.documents||[]), newDoc];
+    await db.collection('properties').doc(propId).update({
+      documents:docs, updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    if(allProperties[propId]) allProperties[propId].documents=docs;
+    toast('✅','Document saved','Stored on property card');
+    // Auto-read with Claude if API key is set
+    if(anthropicApiKey) await readDocAndFill(propId, file);
+  }catch(err){ toast('❌','Upload failed',err.message); }
+}
+
+async function readDocAndFill(propId, file){
+  const prop=allProperties[propId];
+  if(!prop) return;
+  toast('🤖','Reading document…','AI extracting data');
+  try{
+    const b64=await fileToB64(file);
+    const result=await callClaude(b64,file.type||'application/pdf');
+    const fieldMap=[
+      ['address',result.address,null],
+      ['city',result.city,null],
+      ['state',result.state,null],
+      ['price',result.price,'number'],
+      ['size',result.size,null],
+      ['parkingStalls',result.parkingStalls,'int'],
+      ['zoning',result.zoning,null],
+      ['sellerName',result.sellerName,null],
+      ['county',result.county,null],
+      ['legalDesc',result.legalDesc,null],
+    ];
+    const updates={};
+    let filled=0;
+    for(const [field,val,cast] of fieldMap){
+      if(val&&(!prop[field]||prop[field]===''||prop[field]===null)){
+        updates[field]=cast==='number'?Number(val):cast==='int'?parseInt(val):String(val);
+        filled++;
+      }
+    }
+    if(filled>0){
+      updates.updatedAt=firebase.firestore.FieldValue.serverTimestamp();
+      await db.collection('properties').doc(propId).update(updates);
+      Object.assign(allProperties[propId]||{},updates);
+      renderKanban(); renderAdminTable();
+      // Refresh modal form fields if this property's modal is open
+      const openId=document.getElementById('prop-id')?.value;
+      if(openId===propId && !document.getElementById('property-modal').classList.contains('hidden')){
+        const p=allProperties[propId];
+        const set=(id,v)=>{ const el=document.getElementById(id); if(el&&!el.value) el.value=v||''; };
+        set('prop-address',p.address); set('prop-city',p.city); set('prop-state',p.state);
+        set('prop-price',p.price); set('prop-size',p.size); set('prop-parking',p.parkingStalls);
+        set('prop-zoning',p.zoning); set('prop-seller',p.sellerName); set('prop-county',p.county); set('prop-legal-desc',p.legalDesc);
+      }
+      toast('✅',`${filled} field${filled>1?'s':''} filled from doc`,'Blank fields updated');
+    } else {
+      toast('ℹ️','No new data found','All existing fields kept as-is');
+    }
+  }catch(err){ toast('⚠️','Could not read doc',err.message); }
+}
+
 document.getElementById('btn-add-property').addEventListener('click',()=>openPropertyModal());
 document.getElementById('btn-save-property').addEventListener('click', async ()=>{
   const id   = document.getElementById('prop-id').value;
@@ -1381,6 +1916,8 @@ document.getElementById('btn-save-property').addEventListener('click', async ()=
     size:document.getElementById('prop-size').value.trim(),
     parkingStalls:parseInt(document.getElementById('prop-parking').value)||null,
     zoning:document.getElementById('prop-zoning').value.trim(),
+    powerCompany:document.getElementById('prop-power-company').value.trim(),
+    feeRate:parseFloat((document.getElementById('prop-fee-rate').value||'').replace('%',''))||null,
     stage:ns,
     listingBroker:document.getElementById('prop-broker').value.trim(),
     brokerPhone:document.getElementById('prop-broker-phone').value.trim(),
@@ -1393,8 +1930,8 @@ document.getElementById('btn-save-property').addEventListener('click', async ()=
     secVal:document.getElementById('prop-sec').value.trim(),
     twpVal:document.getElementById('prop-twp').value.trim(),
     rngVal:document.getElementById('prop-rng').value.trim(),
-    initDeposit:parseFloat(document.getElementById('prop-init-deposit').value)||null,
-    depositDays:parseInt(document.getElementById('prop-deposit-days').value)||null,
+    initDeposit:parseFloat(document.getElementById('prop-init-deposit')?.value)||null,
+    depositDays:parseInt(document.getElementById('prop-deposit-days')?.value)||null,
     notes:document.getElementById('prop-notes').value.trim(),
     publicVisible:document.getElementById('prop-public').checked,
     updatedAt:firebase.firestore.FieldValue.serverTimestamp()
@@ -1421,30 +1958,70 @@ async function deleteProperty(id){
 }
 
 // ── PSA GENERATION ───────────────────────────────────────────
-async function generatePSA(propId){
-  const prop=allProperties[propId];
-  if(!prop){ toast('❌','Property not found',''); return; }
+async function _buildPSABytes(prop){
+  if(typeof PDFLib==='undefined') throw new Error('pdf-lib not loaded. Refresh and try again.');
+  const {PDFDocument,StandardFonts,rgb}=PDFLib;
+  const bytes=await fetch('farbar-template.pdf').then(r=>r.arrayBuffer());
+  const doc=await PDFDocument.load(bytes);
+  const font=await doc.embedFont(StandardFonts.Helvetica);
+  const pages=doc.getPages();
+  const clr=rgb(0,0,0);
+  PSA_FIELD_DEFS.forEach(f=>{
+    const pos=psaPositions[f.key]; if(!pos) return;
+    let val;
+    if(f.fmt==='%→$'){
+      // Fee: percentage of purchase price
+      const rate=prop[f.propField]; if(!rate||!prop.price) return;
+      val='$'+Math.round(Number(prop.price)*Number(rate)/100).toLocaleString();
+    } else {
+      val=prop[f.propField]; if(!val&&val!==0) return;
+      if(f.fmt==='$') val='$'+Number(val).toLocaleString();
+      else val=String(val);
+    }
+    const pg=f.page||0;
+    if(pages[pg]) pages[pg].drawText(val,{x:Number(pos.x),y:Number(pos.y),size:9,font,color:clr});
+  });
+  return await doc.save();
+}
+
+async function generateCalibrationPDF(){
   if(typeof PDFLib==='undefined'){ toast('❌','pdf-lib not loaded','Refresh and try again'); return; }
   try{
-    toast('⏳','Generating PSA…','Loading FARBAR template');
     const {PDFDocument,StandardFonts,rgb}=PDFLib;
     const bytes=await fetch('farbar-template.pdf').then(r=>r.arrayBuffer());
     const doc=await PDFDocument.load(bytes);
     const font=await doc.embedFont(StandardFonts.Helvetica);
     const pages=doc.getPages();
-    const sz=9,clr=rgb(0,0,0);
-    const draw=(pi,txt,x,y)=>{ if(txt) pages[pi].drawText(String(txt),{x,y,size:sz,font,color:clr}); };
-    draw(0,prop.sellerName,    80,706);
-    draw(0,prop.address,       80,665);
-    draw(0,prop.legalDesc,     80,651);
-    draw(0,prop.secVal,        65,584);
-    draw(0,prop.twpVal,       120,584);
-    draw(0,prop.rngVal,       174,584);
-    draw(0,prop.county,       300,571);
-    if(prop.price)       draw(0,'$'+Number(prop.price).toLocaleString(),       188,543);
-    if(prop.initDeposit) draw(0,'$'+Number(prop.initDeposit).toLocaleString(), 255,434);
-    if(prop.depositDays) draw(0,String(prop.depositDays),                      345,421);
+    const red=rgb(0.9,0,0), blue=rgb(0,0,0.8);
+    // Draw a crosshair + label at each configured position
+    PSA_FIELD_DEFS.forEach(f=>{
+      const pos=psaPositions[f.key]; if(!pos) return;
+      const x=Number(pos.x), y=Number(pos.y);
+      // Small tick mark
+      pages[0].drawLine({start:{x:x-4,y},end:{x:x+4,y},thickness:0.5,color:red});
+      pages[0].drawLine({start:{x,y:y-4},end:{x,y:y+4},thickness:0.5,color:red});
+      // Label in red
+      pages[0].drawText('['+f.label+']',{x,y:y+2,size:7,font,color:red});
+    });
+    // Add a coordinate legend at top of page
+    pages[0].drawText('CALIBRATION — red markers show field positions (x from left, y from bottom)',
+      {x:20,y:775,size:6,font,color:blue});
     const blob=new Blob([await doc.save()],{type:'application/pdf'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='PSA-calibration.pdf'; a.click();
+    URL.revokeObjectURL(url);
+    toast('✅','Calibration PDF downloaded','Compare red markers to the form fields');
+  }catch(err){ toast('❌','Calibration failed',err.message); }
+}
+
+// Manual download (from modal "Generate PSA" button)
+async function generatePSA(propId){
+  const prop=allProperties[propId];
+  if(!prop){ toast('❌','Property not found',''); return; }
+  try{
+    toast('⏳','Generating PSA…','Loading FARBAR template');
+    const pdfBytes=await _buildPSABytes(prop);
+    const blob=new Blob([pdfBytes],{type:'application/pdf'});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
     a.href=url; a.download=`PSA-${(prop.address||'property').replace(/[^a-z0-9]/gi,'_')}.pdf`;
@@ -1453,32 +2030,272 @@ async function generatePSA(propId){
   }catch(err){ toast('❌','PSA failed',err.message); }
 }
 
+// Auto-generate PSA on move to Draft Offer → upload to Firebase Storage → task with download link
+async function autoGeneratePSATask(propId){
+  const prop=allProperties[propId];
+  if(!prop) return;
+  toast('📄','Generating PSA…','Auto-filling FARBAR contract for '+esc(prop.address));
+  try{
+    const pdfBytes=await _buildPSABytes(prop);
+    const safeName=(prop.address||propId).replace(/[^a-z0-9]/gi,'_');
+    const filename=`PSA-${safeName}-${Date.now()}.pdf`;
+    const ref=storage.ref(`psas/${propId}/${filename}`);
+    const snap=await ref.put(new Blob([pdfBytes],{type:'application/pdf'}),{contentType:'application/pdf'});
+    const downloadUrl=await snap.ref.getDownloadURL();
+    await db.collection('tasks').add({
+      title:`📄 PSA Ready — ${prop.address}`,
+      desc:'FARBAR Vacant Land Contract auto-filled. Download it below and send to the seller.',
+      propertyId:propId,
+      propertyAddress:prop.address||'',
+      status:'pending',
+      attachmentUrl:downloadUrl,
+      attachmentName:filename,
+      triggeredBy:'possible→draft_offer',
+      createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    toast('✅','PSA in Tasks panel','Click the task to download and send to seller');
+    openTasksPanel();
+  }catch(err){
+    console.error('Auto PSA failed:',err);
+    toast('⚠️','PSA auto-gen failed',err.message+' — open property and click Generate PSA manually');
+    await db.collection('tasks').add({
+      title:`📄 Generate PSA — ${prop.address}`,
+      desc:'Auto-generation failed. Open the property card and click the "Generate PSA" button to create the FARBAR contract manually.',
+      propertyId:propId,
+      propertyAddress:prop.address||'',
+      status:'pending',
+      triggeredBy:'possible→draft_offer',
+      createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    openTasksPanel();
+  }
+}
+
+// ── PSA VISUAL EDITOR ────────────────────────────────────────
+let _psaEditorScale = 1.5;
+let _psaEditorPageHeight = 792; // PDF points
+
+async function openPSAEditor(){
+  // Set up pdf.js worker
+  if(window.pdfjsLib){
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+  document.getElementById('psa-editor-modal').classList.remove('hidden');
+  await renderPSAEditorPage();
+
+  // Page / zoom controls
+  document.getElementById('psa-page-select').onchange = renderPSAEditorPage;
+  document.getElementById('psa-zoom-select').onchange  = ()=>{
+    _psaEditorScale = parseFloat(document.getElementById('psa-zoom-select').value)||1.5;
+    renderPSAEditorPage();
+  };
+}
+
+async function renderPSAEditorPage(){
+  const wrap   = document.getElementById('psa-canvas-wrap');
+  const canvas = document.getElementById('psa-pdf-canvas');
+  const pageNum= parseInt(document.getElementById('psa-page-select')?.value||1);
+  _psaEditorScale = parseFloat(document.getElementById('psa-zoom-select')?.value||1.5);
+
+  // Clear old labels
+  wrap.querySelectorAll('.psa-drag-label').forEach(e=>e.remove());
+
+  // Show loading state
+  const ctx = canvas.getContext('2d');
+  canvas.width=100; canvas.height=100;
+  ctx.fillStyle='#6b7280'; ctx.fillRect(0,0,100,100);
+  ctx.fillStyle='#fff'; ctx.font='14px sans-serif'; ctx.fillText('Loading PDF…',10,50);
+
+  try{
+    if(!window.pdfjsLib) throw new Error('pdf.js not loaded');
+    const pdf = await window.pdfjsLib.getDocument('farbar-template.pdf').promise;
+    const page = await pdf.getPage(pageNum);
+    const baseVP = page.getViewport({scale:1});
+    _psaEditorPageHeight = baseVP.height; // store for coord conversion
+    const vp = page.getViewport({scale:_psaEditorScale});
+    canvas.width  = vp.width;
+    canvas.height = vp.height;
+    await page.render({canvasContext:ctx, viewport:vp}).promise;
+
+    // Show labels whose page matches the current page (0-indexed vs 1-indexed display)
+    PSA_FIELD_DEFS.forEach((f,i)=>{
+      if((f.page||0) !== (pageNum-1)) return;
+      const pos = psaPositions[f.key]||{x:40,y:700};
+      addPSADragLabel(wrap, f, pos, i);
+    });
+  }catch(err){
+    ctx.fillStyle='#fff'; ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle='#6b7280'; ctx.fillRect(0,0,canvas.width||400,canvas.height||200);
+    ctx.fillStyle='#f87171'; ctx.font='13px sans-serif';
+    ctx.fillText('Could not load PDF: '+err.message, 10, 50);
+    ctx.fillStyle='#ccc'; ctx.font='11px sans-serif';
+    ctx.fillText('Make sure farbar-template.pdf is in the same folder as index.html', 10, 72);
+  }
+}
+
+// Colors for each field label so they're easy to distinguish
+const PSA_LABEL_COLORS = [
+  '#dc2626','#d97706','#059669','#2563eb','#7c3aed',
+  '#db2777','#0891b2','#65a30d','#ea580c','#6d28d9'
+];
+
+function addPSADragLabel(wrap, fieldDef, pos, idx){
+  const scale = _psaEditorScale;
+  const pageH = _psaEditorPageHeight;
+
+  // Convert PDF coords (bottom-left origin) → canvas pixels (top-left origin)
+  const cx = pos.x * scale;
+  const cy = (pageH - pos.y) * scale;
+
+  const label = document.createElement('div');
+  label.className = 'psa-drag-label';
+  label.dataset.key = fieldDef.key;
+  label.textContent = fieldDef.label;
+  label.style.left   = cx + 'px';
+  label.style.top    = cy + 'px';
+  label.style.background = PSA_LABEL_COLORS[idx % PSA_LABEL_COLORS.length];
+  label.title = `${fieldDef.label} — x:${Math.round(pos.x)}, y:${Math.round(pos.y)}`;
+
+  // Drag logic
+  label.addEventListener('mousedown', e=>{
+    e.preventDefault();
+    label.classList.add('dragging');
+    const startMX = e.clientX, startMY = e.clientY;
+    const startL  = label.offsetLeft, startT = label.offsetTop;
+    const coordEl = document.getElementById('psa-editor-coords');
+    if(coordEl) coordEl.style.display='block';
+
+    const onMove = e=>{
+      const newL = Math.max(0, startL + (e.clientX - startMX));
+      const newT = Math.max(0, startT + (e.clientY - startMY));
+      label.style.left = newL+'px';
+      label.style.top  = newT+'px';
+      // Convert canvas px back to PDF points
+      const pdfX = Math.round(newL / scale);
+      const pdfY = Math.round(pageH - (newT / scale));
+      if(coordEl) coordEl.textContent = `${fieldDef.label}  →  x: ${pdfX}  y: ${pdfY}`;
+      label.title = `${fieldDef.label} — x:${pdfX}, y:${pdfY}`;
+      psaPositions[fieldDef.key] = {x:pdfX, y:pdfY};
+      // Sync number inputs if settings panel visible
+      const xi=document.getElementById('psa-'+fieldDef.key+'-x');
+      const yi=document.getElementById('psa-'+fieldDef.key+'-y');
+      if(xi) xi.value=pdfX; if(yi) yi.value=pdfY;
+    };
+
+    const onUp = async ()=>{
+      label.classList.remove('dragging');
+      document.removeEventListener('mousemove',onMove);
+      document.removeEventListener('mouseup',onUp);
+      // Auto-save
+      await db.collection('settings').doc('psa').set(psaPositions);
+      const ind=document.getElementById('psa-save-indicator');
+      if(ind){ ind.textContent='✓ Saved'; ind.style.color='#4ade80';
+        setTimeout(()=>{ if(ind) ind.textContent=''; },2000); }
+    };
+
+    document.addEventListener('mousemove',onMove);
+    document.addEventListener('mouseup',onUp);
+  });
+
+  // Touch support
+  label.addEventListener('touchstart', e=>{
+    e.preventDefault();
+    const t0=e.touches[0];
+    const startMX=t0.clientX, startMY=t0.clientY;
+    const startL=label.offsetLeft, startT=label.offsetTop;
+    const onTMove=e=>{
+      const t=e.touches[0];
+      label.style.left=Math.max(0,startL+(t.clientX-startMX))+'px';
+      label.style.top =Math.max(0,startT+(t.clientY-startMY))+'px';
+      const pdfX=Math.round(label.offsetLeft/scale);
+      const pdfY=Math.round(pageH-(label.offsetTop/scale));
+      psaPositions[fieldDef.key]={x:pdfX,y:pdfY};
+    };
+    const onTEnd=async ()=>{
+      label.removeEventListener('touchmove',onTMove);
+      label.removeEventListener('touchend',onTEnd);
+      await db.collection('settings').doc('psa').set(psaPositions);
+    };
+    label.addEventListener('touchmove',onTMove,{passive:false});
+    label.addEventListener('touchend',onTEnd);
+  },{passive:false});
+
+  wrap.appendChild(label);
+}
+
+// Close editor
+document.getElementById('psa-editor-x').addEventListener('click',    ()=>document.getElementById('psa-editor-modal').classList.add('hidden'));
+document.getElementById('psa-editor-close').addEventListener('click', ()=>document.getElementById('psa-editor-modal').classList.add('hidden'));
+document.getElementById('psa-editor-modal').addEventListener('click', e=>{
+  if(e.target===document.getElementById('psa-editor-modal'))
+    document.getElementById('psa-editor-modal').classList.add('hidden');
+});
+
 // ── TASKS PANEL ──────────────────────────────────────────────
 function openTasksPanel(){ document.getElementById('tasks-panel').classList.add('open'); }
 document.getElementById('btn-tasks-panel').addEventListener('click',openTasksPanel);
 document.getElementById('panel-close-btn').addEventListener('click',()=>document.getElementById('tasks-panel').classList.remove('open'));
 function renderTasksPanel(){
   const tasks=Object.values(allTasks);
-  const pending=tasks.filter(t=>t.status==='pending').length;
+  // Only show pending tasks — completed/dismissed disappear
+  const pending=tasks.filter(t=>t.status==='pending');
   const badge=document.getElementById('tasks-badge');
-  if(badge){ badge.textContent=pending; badge.style.display=pending>0?'inline-flex':'none'; }
+  if(badge){ badge.textContent=pending.length; badge.style.display=pending.length>0?'inline-flex':'none'; }
   const list=document.getElementById('tasks-list');
-  if(!tasks.length){ list.innerHTML='<div style="color:var(--text-muted);text-align:center;padding:32px 0">No tasks yet.</div>'; return; }
-  list.innerHTML=tasks.map(t=>`
-    <div class="task-item">
-      <div class="task-item-header">
-        <input type="checkbox" class="task-check" data-task-id="${t.id}" ${t.status==='complete'?'checked':''}>
-        <div>
-          <div class="task-title" style="${t.status==='complete'?'text-decoration:line-through;opacity:.5':''}">${esc(t.title)}</div>
-          <div class="task-desc">${esc(t.desc||'')}</div>
+  if(!pending.length){
+    list.innerHTML='<div style="color:var(--text-muted);text-align:center;padding:32px 0">No pending tasks.</div>';
+    return;
+  }
+  list.innerHTML=pending.map(t=>`
+    <div class="task-item" id="task-${t.id}">
+      <div style="display:flex;align-items:flex-start;gap:0;">
+        <div class="task-item-header" style="flex:1;">
+          <input type="checkbox" class="task-check" data-task-id="${t.id}">
+          <div>
+            <div class="task-title">${esc(t.title)}</div>
+            <div class="task-desc">${esc(t.desc||'')}</div>
+          </div>
+          <span class="task-status task-pending">Pending</span>
         </div>
-        <span class="task-status ${t.status==='complete'?'task-complete':'task-pending'}">${t.status==='complete'?'Done':'Pending'}</span>
+        <button class="task-dismiss" data-task-id="${t.id}" title="Dismiss — removes task without logging"
+          style="background:none;border:none;color:var(--text-muted);font-size:20px;line-height:1;padding:2px 8px;cursor:pointer;flex-shrink:0;border-radius:4px;margin-top:2px;">×</button>
       </div>
       ${t.propertyAddress?`<div class="task-prop-tag">📍 ${esc(t.propertyAddress)}</div>`:''}
+      ${t.attachmentUrl?`<a href="${t.attachmentUrl}" target="_blank" rel="noopener" class="btn btn-primary btn-sm" style="margin-top:10px;display:inline-flex;gap:6px;">📄 Download PSA Contract</a>`:''}
     </div>`).join('');
+
+  // ✅ Complete → disappear + append to property notes
   list.querySelectorAll('.task-check').forEach(cb=>{
     cb.addEventListener('change', async e=>{
-      await db.collection('tasks').doc(e.target.dataset.taskId).update({status:e.target.checked?'complete':'pending'});
+      if(!e.target.checked) return; // shouldn't uncheck since task disappears
+      const taskId=e.target.dataset.taskId;
+      const task=allTasks[taskId];
+      if(!task) return;
+      await db.collection('tasks').doc(taskId).update({
+        status:'complete',
+        completedAt:firebase.firestore.FieldValue.serverTimestamp()
+      });
+      // Save completion note to property
+      if(task.propertyId && allProperties[task.propertyId]){
+        const prop=allProperties[task.propertyId];
+        const dateStr=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+        const entry=`[${dateStr} ✅] ${task.title}`;
+        const newNotes=(prop.notes?prop.notes+'\n':'')+entry;
+        await db.collection('properties').doc(task.propertyId).update({
+          notes:newNotes,
+          updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+        });
+        if(allProperties[task.propertyId]) allProperties[task.propertyId].notes=newNotes;
+      }
+      toast('✅','Task complete','Logged to property notes');
+    });
+  });
+
+  // × Dismiss → just delete, no notes saved
+  list.querySelectorAll('.task-dismiss').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      await db.collection('tasks').doc(btn.dataset.taskId).delete();
     });
   });
 }
@@ -1735,6 +2552,115 @@ function toast(icon,title,body='',dur=4000){
   setTimeout(()=>{ el.classList.add('removing'); el.addEventListener('animationend',()=>el.remove()); },dur);
 }
 
+// ── MAP VIEW ─────────────────────────────────────────────────
+let _leafletMaps = {}; // canvasId → leaflet map instance
+let _geocodeCache = {}; // propId → {lat,lng}
+
+function feedbackPinColor(summary){
+  return {'immediately_pursue':'#22c55e','potential_pursue':'#4f7cff','more_info':'#f59e0b','pass':'#ef4444'}[summary]||'#9ca3af';
+}
+
+async function geocodeAddress(address, city, state){
+  const q=[address,city,state].filter(Boolean).join(', ');
+  try{
+    const res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1&addressdetails=0&email=ryan@thedirtdog.com`);
+    const data=await res.json();
+    if(data.length) return {lat:parseFloat(data[0].lat),lng:parseFloat(data[0].lon)};
+  }catch(e){ console.warn('Geocode failed:',e); }
+  return null;
+}
+
+async function renderMapView(canvasId='map-canvas', statusId='map-status'){
+  // Wait up to 5s for Leaflet to load
+  for(let i=0;i<50&&!window.L;i++) await new Promise(r=>setTimeout(r,100));
+  const statusEl=document.getElementById(statusId);
+  if(!window.L){ if(statusEl) statusEl.textContent='Map library failed to load — try refreshing'; return; }
+  const canvas=document.getElementById(canvasId);
+  if(!canvas) return;
+  if(!_leafletMaps[canvasId]){
+    _leafletMaps[canvasId]=L.map(canvasId).setView([27.99,-82.55],8);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+      attribution:'© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',maxZoom:19
+    }).addTo(_leafletMaps[canvasId]);
+    _addMapLegend(_leafletMaps[canvasId]);
+  }
+  const map=_leafletMaps[canvasId];
+  // Remove old markers
+  map.eachLayer(l=>{ if(l instanceof L.CircleMarker) map.removeLayer(l); });
+  setTimeout(()=>map.invalidateSize(),300);
+  setTimeout(()=>map.invalidateSize(),800);
+
+  const props=Object.values(allProperties).filter(p=>p.publicVisible!==false&&p.stage!=='dead'&&p.stage!=='closed');
+  if(statusEl) statusEl.textContent=`Locating ${props.length} properties…`;
+  let located=0;
+  const bounds=[];
+
+  for(const prop of props){
+    let coords=null;
+    if(_geocodeCache[prop.id]){ coords=_geocodeCache[prop.id]; }
+    else if(prop.lat&&prop.lng){ coords={lat:prop.lat,lng:prop.lng}; _geocodeCache[prop.id]=coords; }
+    else{
+      await new Promise(r=>setTimeout(r,350)); // Nominatim rate limit
+      coords=await geocodeAddress(prop.address,prop.city,prop.state);
+      if(coords){
+        _geocodeCache[prop.id]=coords;
+        if(currentUser) db.collection('properties').doc(prop.id).update({lat:coords.lat,lng:coords.lng}).catch(()=>{});
+      }
+    }
+    if(!coords) continue;
+
+    const color=feedbackPinColor(prop.feedbackSummary||'');
+    const rent=calcRent(prop.price);
+    const fbLabel=FB_MAP[prop.feedbackSummary||'']?.label||'No Feedback';
+    const mapQ=encodeURIComponent([prop.address,prop.city,prop.state].filter(Boolean).join(', '));
+
+    L.circleMarker([coords.lat,coords.lng],{
+      radius:10, fillColor:color, color:'#fff', weight:2, opacity:1, fillOpacity:.9
+    }).addTo(map).bindPopup(`
+      <div style="min-width:210px;font-family:system-ui,sans-serif;font-size:13px;line-height:1.5;">
+        <div style="font-weight:700;font-size:14px;margin-bottom:2px;">${esc(prop.address||'')}</div>
+        <div style="color:#888;margin-bottom:8px;">${[prop.city,prop.state].filter(Boolean).join(', ')}</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <tr><td style="color:#888;padding:2px 0;padding-right:10px;">Proposed NNN</td><td style="font-weight:600;text-align:right">${rent?'$'+Math.round(rent).toLocaleString()+'/yr':'—'}</td></tr>
+          <tr><td style="color:#888;padding:2px 0;padding-right:10px;">Acreage</td><td style="text-align:right">${esc(prop.size||'—')}</td></tr>
+          <tr><td style="color:#888;padding:2px 0;padding-right:10px;">Max Stalls</td><td style="text-align:right">${prop.parkingStalls||'—'}</td></tr>
+          <tr><td style="color:#888;padding:2px 0;padding-right:10px;">Zoning</td><td style="text-align:right">${esc(prop.zoning||'—')}</td></tr>
+          ${prop.powerCompany?`<tr><td style="color:#888;padding:2px 0;padding-right:10px;">Power Co</td><td style="text-align:right">${esc(prop.powerCompany)}</td></tr>`:''}
+        </table>
+        <div style="margin-top:8px;padding-top:6px;border-top:1px solid rgba(128,128,128,.3);display:flex;align-items:center;justify-content:space-between;">
+          <span style="display:flex;align-items:center;gap:5px;font-size:11px;">
+            <span style="width:10px;height:10px;border-radius:50%;background:${color};border:2px solid rgba(128,128,128,.4);display:inline-block;"></span>
+            ${fbLabel}
+          </span>
+          <a href="https://www.google.com/maps/search/?api=1&query=${mapQ}" target="_blank" rel="noopener" style="font-size:11px;color:#4f7cff;text-decoration:none;">🗺 Directions</a>
+        </div>
+      </div>
+    `,{maxWidth:280});
+
+    bounds.push([coords.lat,coords.lng]);
+    located++;
+    if(statusEl) statusEl.textContent=`Located ${located} of ${props.length} properties…`;
+  }
+
+  if(statusEl) statusEl.textContent=located?`${located} propert${located===1?'y':'ies'} mapped`:'No properties with valid addresses found';
+  if(bounds.length>1) map.fitBounds(L.latLngBounds(bounds).pad(0.12));
+  else if(bounds.length===1) map.setView(bounds[0],13);
+}
+
+function _addMapLegend(mapInstance){
+  if(!mapInstance) return;
+  const legend=L.control({position:'bottomright'});
+  legend.onAdd=()=>{
+    const div=L.DomUtil.create('div');
+    div.style.cssText='background:rgba(15,17,23,.92);padding:12px 14px;border-radius:10px;border:1px solid rgba(42,49,72,.8);color:#e4e8f0;font-size:12px;font-family:system-ui,sans-serif;';
+    div.innerHTML=`<div style="font-weight:700;margin-bottom:8px;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#7b87a0;">Feedback</div>`+
+    [['#22c55e','Immediately Pursue'],['#4f7cff','Potential Pursue'],['#f59e0b','More Info Needed'],['#ef4444','Pass'],['#9ca3af','No Feedback']]
+    .map(([c,l])=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;"><div style="width:11px;height:11px;border-radius:50%;background:${c};border:2px solid rgba(255,255,255,.25);flex-shrink:0;"></div><span>${l}</span></div>`).join('');
+    return div;
+  };
+  legend.addTo(mapInstance);
+}
+
 // ── UTILS ────────────────────────────────────────────────────
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 </script>
@@ -1759,6 +2685,25 @@ service cloud.firestore {
     }
     match /settings/{settingDoc} {
       allow read, write: if request.auth != null;
+    }
+  }
+}
+
+=============================================================
+  FIREBASE STORAGE RULES
+  Apply in Firebase Console → Storage → Rules
+=============================================================
+
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /psas/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /property-docs/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
     }
   }
 }
